@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Antes &amp; Después — Fotografía clínica para clínicas estéticas</title>
+<meta name="description" content="La cámara fantasma superpone la foto anterior para que cada control se saque con el mismo encuadre. Comparativas antes/después profesionales, en minutos.">
+<link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --hueso:#FAFAF8;
+    --tinta:#101014;
+    --indigo:#6366F1;
+    --indigo-tinta:#34367A;
+    --verde:#16A34A;
+    --rojo:#EF4444;
+    --niebla:#8A8F98;
+    --linea:#E7E6E1;
+    --radius:18px;
+    --disp:"Bricolage Grotesque",Georgia,serif;
+    --body:"Instrument Sans",-apple-system,system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    *,*::before,*::after{animation:none!important;transition:none!important}
+  }
+  body{
+    font-family:var(--body);color:var(--tinta);background:var(--hueso);
+    -webkit-font-smoothing:antialiased;line-height:1.55;
+  }
+  a{color:inherit}
+  :focus-visible{outline:2px solid var(--indigo);outline-offset:3px;border-radius:4px}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+  .mono{font-family:var(--mono)}
+
+  /* ── Nav ─────────────────────────────────────────── */
+  nav{position:sticky;top:0;z-index:50;background:rgba(250,250,248,.86);backdrop-filter:blur(12px);border-bottom:1px solid var(--linea)}
+  .nav-in{display:flex;align-items:center;gap:28px;height:64px}
+  .mark{display:flex;align-items:center;gap:10px;font-weight:600;text-decoration:none;font-size:15.5px;letter-spacing:-.01em}
+  .mark img{width:28px;height:28px;border-radius:7px}
+  .mark em{font-style:normal;color:var(--niebla)}
+  .nav-links{margin-left:auto;display:flex;align-items:center;gap:22px;font-size:14px}
+  .nav-links a{text-decoration:none;color:var(--niebla)}
+  .nav-links a:hover{color:var(--tinta)}
+  .btn{display:inline-flex;align-items:center;gap:8px;background:var(--tinta);color:#fff;border-radius:999px;
+       padding:11px 20px;font-size:14.5px;font-weight:600;text-decoration:none;border:1px solid var(--tinta);
+       transition:transform .15s ease, background .15s ease}
+  .btn:hover{background:#26262e;transform:translateY(-1px)}
+  .btn.ghost{background:transparent;color:var(--tinta);border-color:var(--linea)}
+  .btn.ghost:hover{background:#f1f0ec}
+  .btn.sm{padding:8px 16px;font-size:13.5px}
+
+  /* ── Hero ─────────────────────────────────────────── */
+  header{overflow:hidden}
+  .hero{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:56px;align-items:center;padding:72px 0 64px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo);font-weight:500;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+  .eyebrow::before{content:"";width:22px;height:1px;background:var(--indigo)}
+  h1{font-family:var(--disp);font-size:clamp(38px,4.6vw,58px);line-height:1.04;letter-spacing:-.025em;font-weight:600}
+  h1 .verde{color:var(--verde)}
+  h1 .rojo{color:var(--rojo)}
+  .hero p.lede{margin:22px 0 30px;font-size:17px;color:#4b4e57;max-width:44ch}
+  .hero-ctas{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .hero-note{margin-top:14px;font-family:var(--mono);font-size:12px;color:var(--niebla)}
+
+  /* signature: comparador rojo→verde */
+  .demo-card{background:#fff;border:1px solid var(--linea);border-radius:var(--radius);
+             box-shadow:0 24px 60px -30px rgba(16,16,20,.25);overflow:hidden}
+  .demo-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--linea)}
+  .demo-head .t{font-weight:600;font-size:14px;letter-spacing:-.01em}
+  .demo-head .s{font-family:var(--mono);font-size:11.5px;color:var(--niebla);margin-left:auto}
+  .cmp{position:relative;height:400px;background:
+       radial-gradient(120% 90% at 50% 0%,#F2F1EC 0%,#E9E8E2 100%)}
+  .pane{position:absolute;inset:0}
+  .pane .tag{position:absolute;top:14px;left:14px;background:rgba(16,16,20,.82);color:#fff;
+             font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;padding:5px 9px;border-radius:5px}
+  .pane.after .tag{left:auto;right:14px}
+  /* tarjetas foto dentro del demo */
+  .shot{position:absolute;width:31%;aspect-ratio:3/4;background:#fff;border-radius:8px;padding:5%;
+        box-shadow:0 10px 26px -12px rgba(16,16,20,.35);border:1px solid #eceae4}
+  .shot img{width:100%;height:78%;display:block;border-radius:4px;object-fit:cover}
+  .shot img.off-a{object-position:12% 30%;transform:scale(1.15)}
+  .shot img.off-b{object-position:80% 70%}
+  .shot img.flip{transform:scaleX(-1)}
+  .shot .badge{position:absolute;bottom:6%;left:50%;transform:translateX(-50%);
+               font-family:var(--mono);font-size:clamp(9px,1.1vw,11.5px);font-weight:600;padding:3px 8px;border-radius:999px;white-space:nowrap}
+  .badge.r{background:#FEE2E2;color:#B91C1C}
+  .badge.v{background:#DCFCE7;color:#15803D}
+  /* lado antes: caos */
+  .before .shot.a{left:9%;top:16%;transform:rotate(-7deg)}
+  .before .shot.b{left:31%;top:36%;transform:rotate(5deg) scale(.84)}
+  /* lado después: orden */
+  .after .shot.a{left:56%;top:22%;transform:rotate(0)}
+  .after .shot.b{left:78%;top:22%;transform:rotate(0)}
+  .divider{position:absolute;top:0;bottom:0;left:50%;width:2px;background:#fff;
+           box-shadow:0 0 0 1px rgba(16,16,20,.08);z-index:5}
+  .demo-foot{display:flex;gap:18px;align-items:center;padding:12px 16px;border-top:1px solid var(--linea);
+             font-family:var(--mono);font-size:11.5px;color:var(--niebla)}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+  .dot.r{background:var(--rojo)} .dot.v{background:var(--verde)}
+
+  /* banda editorial */
+  .photo-band{position:relative;max-height:480px;overflow:hidden}
+  .photo-band img{width:100%;height:100%;max-height:480px;object-fit:cover;object-position:center 30%;display:block}
+  .band-cap{position:absolute;left:24px;bottom:20px;background:rgba(16,16,20,.78);color:#fff;
+            font-family:var(--mono);font-size:11px;letter-spacing:.14em;padding:8px 12px;border-radius:6px}
+
+  /* franja instrumentos */
+  .strip{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);background:#fff}
+  .strip-in{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;padding:18px 0;
+            font-family:var(--mono);font-size:12.5px;color:#4b4e57}
+  .strip-in b{color:var(--tinta);font-weight:600}
+
+  /* ── Secciones ────────────────────────────────────── */
+  section{padding:88px 0}
+  .sec-head{max-width:640px;margin-bottom:56px}
+  h2{font-family:var(--disp);font-size:clamp(28px,3.4vw,40px);line-height:1.1;letter-spacing:-.02em;font-weight:600}
+  .sec-head p{margin-top:14px;color:#4b4e57;font-size:16px}
+
+  /* pasos (secuencia real) */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .step{background:#fff;border:1px solid var(--linea);border-radius:var(--radius);padding:26px 24px;position:relative}
+  .step .n{font-family:var(--mono);font-size:12px;color:var(--indigo);font-weight:600;letter-spacing:.1em}
+  .step h3{font-family:var(--disp);font-size:20px;margin:12px 0 8px;font-weight:600;letter-spacing:-.01em}
+  .step p{font-size:14.5px;color:#4b4e57}
+  .step .visual{margin-top:20px;height:150px;border-radius:12px;overflow:hidden;position:relative;background:#17171C}
+  /* mini cámara fantasma */
+  .cam{position:absolute;inset:0}
+  .cam .grid-l{position:absolute;background:rgba(255,255,255,.14)}
+  .cam .ghost{position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);width:46%;opacity:.55}
+  .cam .pill{position:absolute;font-family:var(--mono);font-size:10px;font-weight:600;padding:3px 8px;border-radius:999px}
+  .pill.verde{background:rgba(22,163,74,.22);color:#4ADE80;border:1px solid rgba(74,222,128,.4)}
+  .pill.roja{background:rgba(239,68,68,.2);color:#FCA5A5;border:1px solid rgba(252,165,165,.4)}
+  .cam .shutter{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:30px;height:30px;border-radius:50%;
+                border:2.5px solid #4ADE80;background:rgba(255,255,255,.92)}
+  /* mini sesión (paso 1) */
+  .filmstrip{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;background:#F2F1EC}
+  .filmstrip .f{width:24%;aspect-ratio:3/4;background:#fff;border-radius:6px;border:1px solid #E3E1DA;
+                position:relative;overflow:hidden}
+  .filmstrip .f img{width:100%;height:100%;object-fit:cover;display:block}
+  .filmstrip .f img.flip{transform:scaleX(-1)}
+  .filmstrip .f span{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
+                     font-family:var(--mono);font-size:8.5px;background:#101014;color:#fff;padding:2px 5px;border-radius:3px;letter-spacing:.08em;white-space:nowrap}
+  /* mini comparativa (paso 3) */
+  .result{position:absolute;inset:0;background:#F2F1EC;display:flex;align-items:center;justify-content:center}
+  .result .r-card{width:74%;background:#fff;border-radius:10px;padding:8px;box-shadow:0 8px 20px -10px rgba(16,16,20,.3)}
+  .result .r-imgs{display:flex;gap:2px;height:84px}
+  .result .r-imgs div{flex:1;border-radius:4px;position:relative;overflow:hidden}
+  .result .r-imgs img{width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block}
+  .result .r-lab{font-family:var(--mono);font-size:8.5px;color:#fff;background:#101014;border-radius:3px;
+                 padding:2px 5px;position:absolute;bottom:5px;left:5px;letter-spacing:.08em}
+  .result .r-meta{display:flex;justify-content:space-between;align-items:center;padding:7px 3px 2px;
+                  font-family:var(--mono);font-size:9px;color:var(--niebla)}
+
+  /* features */
+  .feat-sec{background:#fff;border-top:1px solid var(--linea);border-bottom:1px solid var(--linea)}
+  .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--linea);border-radius:var(--radius);overflow:hidden;background:var(--linea);row-gap:1px;column-gap:1px}
+  .feat{background:#fff;padding:26px 24px}
+  .feat .ic{font-size:20px;margin-bottom:14px;display:block}
+  .feat h3{font-size:16px;font-weight:600;letter-spacing:-.01em;margin-bottom:6px}
+  .feat p{font-size:14px;color:#4b4e57}
+
+  /* privacidad (oscura) */
+  .priv{background:var(--tinta);color:#EDEDEA;border-radius:calc(var(--radius) + 8px);padding:64px 56px;
+        display:grid;grid-template-columns:1.2fr 1fr;gap:48px;align-items:center}
+  .priv h2{color:#fff}
+  .priv p{color:#B9BAC2;margin-top:14px;font-size:15.5px}
+  .priv ul{list-style:none;display:grid;gap:14px;margin-top:28px}
+  .priv-img{width:100%;height:100%;max-height:440px;object-fit:cover;object-position:center 20%;border-radius:14px}
+  .priv li{display:flex;gap:12px;font-size:14.5px;align-items:flex-start}
+  .priv li::before{content:"✓";font-family:var(--mono);color:#4ADE80;font-weight:600;flex-shrink:0;margin-top:1px}
+
+  /* CTA final */
+  .final{text-align:center;padding:100px 0 110px;position:relative;overflow:hidden}
+  .final-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.22}
+  .final::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,var(--hueso) 0%,rgba(250,250,248,.4) 45%,var(--hueso) 100%)}
+  .final-in{position:relative;z-index:1}
+  .final h2{font-size:clamp(30px,3.8vw,46px)}
+  .final p{color:#4b4e57;margin:16px auto 32px;max-width:46ch}
+
+  footer{border-top:1px solid var(--linea);padding:28px 0;font-size:13px;color:var(--niebla)}
+  .foot-in{display:flex;flex-wrap:wrap;gap:18px;align-items:center}
+  .foot-in a{text-decoration:none}
+  .foot-in a:hover{color:var(--tinta)}
+  .foot-in .right{margin-left:auto;font-family:var(--mono);font-size:11.5px}
+
+  /* reveal on scroll */
+  .rv{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+  .rv.in{opacity:1;transform:none}
+
+  /* ── Responsive ───────────────────────────────────── */
+  @media (max-width:960px){
+    .hero{grid-template-columns:1fr;gap:40px;padding:52px 0 48px}
+    .steps{grid-template-columns:1fr}
+    .feats{grid-template-columns:1fr 1fr}
+    .priv{grid-template-columns:1fr;padding:44px 30px}
+  }
+  @media (max-width:720px){
+    .feats{grid-template-columns:1fr}
+    .cmp{height:430px}
+    /* en mobile el comparador pasa a apilado: antes arriba, después abajo */
+    .cmp .divider{left:0;right:0;top:50%;bottom:auto;width:auto;height:2px}
+    .cmp .after .tag{top:calc(50% + 14px)}
+    .before .shot.a{left:6%;top:8%}
+    .before .shot.b{left:30%;top:22%}
+    .after .shot.a{left:22%;top:58%}
+    .after .shot.b{left:52%;top:58%}
+    .nav-links a.hide-m{display:none}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-in">
+    <a class="mark" href="#"><img src="icon.png" alt="" width="28" height="28">Antes<em>&amp;</em>Después</a>
+    <div class="nav-links">
+      <a href="#como" class="hide-m">Cómo funciona</a>
+      <a href="#features" class="hide-m">Funciones</a>
+      <a href="https://juanpablobaldi.github.io/antesydespues-legal/soporte.html" class="hide-m">Soporte</a>
+      <a class="btn sm" href="https://apps.apple.com/app/id6790166290">Descargar<span aria-hidden="true"></span></a>
+    </div>
+  </div>
+</nav>
+
+<header>
+  <div class="wrap hero">
+    <div>
+      <div class="eyebrow">Fotografía clínica · iOS</div>
+      <h1>El después convence cuando el antes <span class="verde">coincide</span>.</h1>
+      <p class="lede">La cámara fantasma superpone la foto anterior del paciente y te guía —
+      ángulo, distancia y encuadre en <strong>verde</strong> cuando todo coincide.
+      Comparativas profesionales sin fotógrafo, sin estudio, sin adivinar.</p>
+      <div class="hero-ctas">
+        <a class="btn" href="https://apps.apple.com/app/id6790166290">Descargar en App Store</a>
+        <a class="btn ghost" href="#como">Ver cómo funciona</a>
+      </div>
+      <p class="hero-note">Gratis durante el lanzamiento · Hecho para clínicas estéticas</p>
+    </div>
+
+    <!-- Firma: comparador rojo→verde -->
+    <div class="demo-card" id="demo">
+      <div class="demo-head">
+        <span class="t">Tu consultorio</span>
+        <span class="s">misma paciente · dos métodos</span>
+      </div>
+      <div class="cmp" id="cmp">
+        <!-- ANTES: fotos a ojo -->
+        <div class="pane before">
+          <span class="tag">ANTES · A OJO</span>
+          <div class="shot a">
+            <img src="img/maria-antes.jpg" alt="" class="off-a">
+            <span class="badge r">−12° · 0.5x</span>
+          </div>
+          <div class="shot b">
+            <img src="img/maria-despues.jpg" alt="" class="off-b">
+            <span class="badge r">+7° · 2.1x</span>
+          </div>
+        </div>
+        <!-- DESPUÉS: con la app -->
+        <div class="pane after">
+          <span class="tag">DESPUÉS · CON LA APP</span>
+          <div class="shot a">
+            <img src="img/maria-antes.jpg" alt="Foto de perfil antes, encuadre guiado">
+            <span class="badge v">0.0° · 1.0x</span>
+          </div>
+          <div class="shot b">
+            <img src="img/maria-despues.jpg" alt="Foto de perfil después, mismo encuadre">
+            <span class="badge v">0.0° · 1.0x</span>
+          </div>
+        </div>
+        <div class="divider" aria-hidden="true"></div>
+      </div>
+      <div class="demo-foot">
+        <span><span class="dot r"></span>encuadre a ojo</span>
+        <span><span class="dot v"></span>encuadre guiado</span>
+        <span style="margin-left:auto">precisión 0.1°</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="strip">
+  <div class="wrap strip-in">
+    <span><b>3 fotos</b> por control, guiadas</span>
+    <span><b>0.1°</b> de precisión de inclinación</span>
+    <span><b>1 toque</b> para la comparativa</span>
+    <span><b>100%</b> tus datos, tus pacientes</span>
+  </div>
+</div>
+
+<div class="photo-band">
+  <img src="img/accion.jpg" alt="Profesional fotografiando a una paciente con un iPhone en su consultorio" loading="lazy">
+  <span class="band-cap">EL ESTUDIO ES TU CONSULTORIO · EL EQUIPO, TU IPHONE</span>
+</div>
+
+<!-- Cómo funciona -->
+<section id="como">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="eyebrow">El flujo</div>
+      <h2>Tres pasos. El del medio lo hace la app.</h2>
+      <p>Cada control fotográfico es una secuencia: primero la base, después la repetición exacta, al final la prueba del resultado.</p>
+    </div>
+    <div class="steps">
+      <div class="step rv">
+        <span class="n">PASO 1</span>
+        <h3>Sacá las fotos base</h3>
+        <p>En la primera visita registrás la sesión inicial: frente, perfil, lo que tu tratamiento necesite. La app las etiqueta y las guarda en la ficha del paciente.</p>
+        <div class="visual">
+          <div class="filmstrip">
+            <div class="f"><img src="img/maria-antes.jpg" alt=""><span>PERFIL I</span></div>
+            <div class="f"><img src="img/maria-antes.jpg" alt="" class="flip"><span>PERFIL D</span></div>
+            <div class="f"><img src="img/maria-abdomen.jpg" alt=""><span>ABDOMEN</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="step rv">
+        <span class="n">PASO 2</span>
+        <h3>El fantasma te guía</h3>
+        <p>En el control, la foto anterior aparece superpuesta en la cámara. Silueta, grados y zoom pasan de rojo a verde cuando el encuadre coincide. Ahí disparás.</p>
+        <div class="visual">
+          <div class="cam">
+            <span class="grid-l" style="left:33%;top:0;bottom:0;width:1px"></span>
+            <span class="grid-l" style="left:66%;top:0;bottom:0;width:1px"></span>
+            <span class="grid-l" style="top:38%;left:0;right:0;height:1px"></span>
+            <svg class="ghost" viewBox="0 0 60 80" aria-hidden="true"><circle cx="30" cy="26" r="14" fill="none" stroke="#4ADE80" stroke-width="2.5" stroke-dasharray="4 3"/><path d="M6 80 Q30 46 54 80" fill="none" stroke="#4ADE80" stroke-width="2.5" stroke-dasharray="4 3"/></svg>
+            <span class="pill verde" style="top:10px;left:10px">0.2°</span>
+            <span class="pill verde" style="top:10px;right:10px">1.0x</span>
+            <span class="pill verde" style="top:38px;left:10px">65 cm</span>
+            <div class="shutter"></div>
+          </div>
+        </div>
+      </div>
+      <div class="step rv">
+        <span class="n">PASO 3</span>
+        <h3>Compartí la comparativa</h3>
+        <p>Elegís las fotos y la app arma la comparativa: lado a lado, deslizador o video animado, con tu logo y fondo uniforme. Lista para el paciente o tus redes.</p>
+        <div class="visual">
+          <div class="result">
+            <div class="r-card">
+              <div class="r-imgs">
+                <div><img src="img/maria-antes.jpg" alt=""><span class="r-lab">ANTES</span></div>
+                <div><img src="img/maria-despues.jpg" alt=""><span class="r-lab">DESPUÉS</span></div>
+              </div>
+              <div class="r-meta"><span>TOXINA · CONTROL 3</span><span>▶ VIDEO</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="feat-sec" id="features">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="eyebrow">Además de la cámara</div>
+      <h2>Todo lo que rodea a una buena foto clínica.</h2>
+    </div>
+    <div class="feats rv">
+      <div class="feat"><span class="ic" aria-hidden="true">🎨</span><h3>Fondo uniforme</h3><p>Recorta a la persona y unifica el fondo en el color de tu clínica. Dos fotos de días distintos, un mismo estudio.</p></div>
+      <div class="feat"><span class="ic" aria-hidden="true">🕶️</span><h3>Ojos cubiertos</h3><p>Barra o círculos sobre los ojos con un toque, para compartir preservando la identidad del paciente.</p></div>
+      <div class="feat"><span class="ic" aria-hidden="true">🏷️</span><h3>Tu marca en cada foto</h3><p>Logo, etiquetas y bordes con los colores exactos de tu clínica, guardados como favoritos.</p></div>
+      <div class="feat"><span class="ic" aria-hidden="true">🎬</span><h3>Video animado</h3><p>La comparativa también se exporta como video con transición, listo para reels e historias.</p></div>
+      <div class="feat"><span class="ic" aria-hidden="true">🗂️</span><h3>Ficha por paciente</h3><p>Sesiones, comparativas y álbumes ordenados por paciente y tratamiento. Todo se encuentra en dos toques.</p></div>
+      <div class="feat"><span class="ic" aria-hidden="true">👥</span><h3>Equipo sincronizado</h3><p>Tu equipo trabaja sobre la misma biblioteca: lo que se fotografía en un consultorio aparece en todos.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Privacidad -->
+<section>
+  <div class="wrap">
+    <div class="priv rv">
+      <div>
+        <div class="eyebrow" style="color:#818CF8">Privacidad</div>
+        <h2>Las fotos de tus pacientes son historia clínica.</h2>
+        <p>Las tratamos como tales: la app está pensada para consultorios que se toman en serio el consentimiento y la protección de datos.</p>
+        <ul>
+          <li>Consentimiento informado con firma del paciente, dentro de la app</li>
+          <li>Ojos cubiertos y datos mínimos al compartir</li>
+          <li>Sin publicidad y sin tracking de terceros</li>
+          <li>Tus datos son tuyos: exportalos cuando quieras</li>
+        </ul>
+      </div>
+      <img class="priv-img" src="img/retrato.jpg" alt="Dermatóloga en el pasillo de su clínica" loading="lazy">
+    </div>
+  </div>
+</section>
+
+<!-- CTA final -->
+<div class="final">
+  <img class="final-bg" src="img/clinica.jpg" alt="" aria-hidden="true" loading="lazy">
+  <div class="wrap final-in">
+    <div class="eyebrow" style="justify-content:center">Disponible en iPhone</div>
+    <h2 class="rv">Tu próximo control,<br>con el encuadre de la primera foto.</h2>
+    <p class="rv">Descargala gratis, cargá tu primer paciente y sacá la primera sesión hoy. La próxima foto ya sale guiada.</p>
+    <a class="btn rv" style="font-size:16px;padding:14px 28px" href="https://apps.apple.com/app/id6790166290">Descargar en App Store</a>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap foot-in">
+    <span>© 2026 Antes &amp; Después</span>
+    <a href="https://juanpablobaldi.github.io/antesydespues-legal/privacy.html">Privacidad</a>
+    <a href="https://juanpablobaldi.github.io/antesydespues-legal/soporte.html">Soporte</a>
+    <span class="right">HECHO EN EL CONSULTORIO</span>
+  </div>
+</footer>
+
+<script>
+  // Reveals
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+  }), { threshold: 0.15 });
+  document.querySelectorAll('.rv').forEach(el => io.observe(el));
+</script>
+</body>
+</html>
