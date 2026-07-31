@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Panel — Antes y Después</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a1a; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 22px; margin: 28px 0 12px; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 14px 0; }
+  .card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .card-title { font-size: 12px; text-transform: uppercase; color: #999; margin-bottom: 6px; }
+  .card-value { font-size: 30px; font-weight: 600; color: #0066cc; }
+  .card-sub { font-size: 12px; color: #666; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin: 12px 0 24px; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 13px; }
+  th { background: #f5f5f5; font-weight: 600; color: #666; }
+  .ok { color: #10b981; } .warn { color: #f59e0b; } .off { color: #ef4444; }
+  .empty { text-align: center; color: #999; }
+  /* login */
+  #login { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .login-card { background: white; padding: 36px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 360px; }
+  .login-card h1 { margin: 0 0 20px; font-size: 19px; }
+  input { width: 100%; padding: 11px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+  .btn { width: 100%; padding: 12px; background: #0066cc; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 500; }
+  .btn:hover { background: #0052a3; }
+  .err { color: #ef4444; font-size: 13px; margin-bottom: 10px; min-height: 16px; }
+  .linkbtn { background: none; border: none; color: #0066cc; cursor: pointer; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="login-card">
+    <h1>📊 Panel — Antes y Después</h1>
+    <div class="err" id="login-err"></div>
+    <input type="email" id="email" placeholder="Email" autocomplete="username">
+    <input type="password" id="pw" placeholder="Contraseña" autocomplete="current-password">
+    <button class="btn" onclick="entrar()">Entrar</button>
+  </div>
+</div>
+
+<div id="panel" class="container" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <h1 style="margin-top:12px;">📊 Antes y Después — Panel</h1>
+    <button class="linkbtn" onclick="salir()">Cerrar sesión</button>
+  </div>
+  <div id="content"><p style="color:#999; margin-top:20px;">Cargando…</p></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://qjngfuvnktpbyeodspjo.supabase.co';
+const ANON_KEY = 'sb_publishable_pzMwijsCFFna5YsomqXKAw_8HGCtPBt';
+const API = SUPABASE_URL + '/functions/v1/dashboard-referrals';
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const fecha = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
+const fechaHora = (d) => new Date(d).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
+const plata = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+
+async function entrar() {
+  $('login-err').textContent = '';
+  const r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY },
+    body: JSON.stringify({ email: $('email').value.trim(), password: $('pw').value }),
+  });
+  const d = await r.json();
+  if (!d.access_token) {
+    $('login-err').textContent = d.error_description || d.msg || 'Login inválido';
+    return;
+  }
+  sessionStorage.setItem('panel_token', d.access_token);
+  cargar(d.access_token);
+}
+
+function salir() {
+  sessionStorage.removeItem('panel_token');
+  location.reload();
+}
+
+async function cargar(token) {
+  const r = await fetch(API, { headers: { 'Authorization': 'Bearer ' + token } });
+  if (r.status === 401) { sessionStorage.removeItem('panel_token'); location.reload(); return; }
+  if (r.status === 403) { $('login-err').textContent = 'Acceso restringido al administrador.'; return; }
+  const d = await r.json();
+
+  $('login').style.display = 'none';
+  $('panel').style.display = 'block';
+
+  const g = d.generales, p = d.planes, f = d.fuentes, ref = d.referidos;
+  $('content').innerHTML = `
+  <h1>Métricas generales</h1>
+  <div class="grid">
+    <div class="card"><div class="card-title">Clínicas totales</div>
+      <div class="card-value">${g.clinicas}</div>
+      <div class="card-sub">+${g.nuevas_30d} en los últimos 30 días</div></div>
+    <div class="card"><div class="card-title">Ingreso mensual (MRR)</div>
+      <div class="card-value">${plata(g.mrr)}</div>
+      <div class="card-sub">${g.planes_pagos} plan${g.planes_pagos === 1 ? '' : 'es'} pagos (Apple/Google/directo)</div></div>
+    <div class="card"><div class="card-title">Planes de cortesía</div>
+      <div class="card-value">${g.promos_vigentes}</div>
+      <div class="card-sub">promo / referidos vigentes</div></div>
+    <div class="card"><div class="card-title">Conversión a pago</div>
+      <div class="card-value">${g.conversion_pct}%</div>
+      <div class="card-sub">del total de clínicas</div></div>
+  </div>
+  <table>
+    <thead><tr><th>Plan</th><th>Vigentes</th><th></th><th>Fuente</th><th>Vigentes</th></tr></thead>
+    <tbody>
+      <tr><td>Free</td><td>${p.free}</td><td></td><td>🍎 Apple</td><td>${f.apple}</td></tr>
+      <tr><td>Profesional</td><td>${p.profesional}</td><td></td><td>🤖 Google</td><td>${f.google}</td></tr>
+      <tr><td>Clínica</td><td>${p.clinica}</td><td></td><td>💳 Directo (MP)</td><td>${f.direct}</td></tr>
+      <tr><td>Clínica Pro</td><td>${p.clinica_pro}</td><td></td><td>🎁 Promo/Referido</td><td>${f.promo}</td></tr>
+    </tbody>
+  </table>
+
+  <h1>Referidos</h1>
+  <div class="grid">
+    <div class="card"><div class="card-title">Códigos activos</div><div class="card-value">${ref.codigos_activos}</div></div>
+    <div class="card"><div class="card-title">Canjes totales</div><div class="card-value">${ref.canjes}</div></div>
+    <div class="card"><div class="card-title">Convertidos (pagaron)</div><div class="card-value">${ref.convertidos}</div></div>
+    <div class="card"><div class="card-title">Comisiones 30d</div><div class="card-value">${plata(ref.comisiones_30d)}</div>
+      <div class="card-sub">a liquidar a consultores</div></div>
+  </div>
+  <table>
+    <thead><tr><th>Código</th><th>Tipo</th><th>Referidor</th><th>Plan trial</th><th>Días</th><th>Canjes</th><th>Convertidos</th><th>Estado</th></tr></thead>
+    <tbody>${d.codigos.map(c => `<tr>
+      <td><strong>${esc(c.code)}</strong></td>
+      <td>${c.kind === 'consultant' ? '👨‍💼 Consultor' : '🏥 Clínica'}</td>
+      <td>${esc(c.display_name)}</td><td>${esc(c.plan_id)}</td><td>${c.trial_days}</td>
+      <td>${c.canjes}</td><td>${c.convertidos}</td>
+      <td class="${c.active ? 'ok' : 'off'}">${c.active ? '✓ Activo' : '✗ Inactivo'}</td>
+    </tr>`).join('') || '<tr><td colspan="8" class="empty">Sin códigos creados</td></tr>'}</tbody>
+  </table>
+
+  <h1>Canjes</h1>
+  <table>
+    <thead><tr><th>Código</th><th>Referidor</th><th>Clínica referida</th><th>Plan</th><th>Canjeado</th><th>1er pago</th><th>Premio</th></tr></thead>
+    <tbody>${d.canjes.map(r => `<tr>
+      <td><strong>${esc(r.code)}</strong></td><td>${esc(r.referidor)}</td>
+      <td>${esc(r.clinica)}</td><td>${esc(r.plan)}</td>
+      <td>${fecha(r.redeemed_at)}</td><td>${fecha(r.first_payment_at)}</td>
+      <td>${r.kind !== 'clinic' ? 'n/a'
+          : r.referrer_rewarded_at ? '<span class="ok">✓ Aplicado</span>'
+          : r.first_payment_at ? '<span class="warn">⏳ Pendiente</span>' : '—'}</td>
+    </tr>`).join('') || '<tr><td colspan="7" class="empty">Todavía no hay canjes</td></tr>'}</tbody>
+  </table>
+
+  <h1>Liquidación consultores (últimos 30 días)</h1>
+  <table>
+    <thead><tr><th>Código</th><th>Consultor</th><th>Referidos que pagaron</th><th>Comisión</th></tr></thead>
+    <tbody>${d.comisiones.map(c => `<tr>
+      <td><strong>${esc(c.code)}</strong></td><td>${esc(c.consultor)}</td>
+      <td>${c.referidos}</td><td>${plata(Number(c.comision_total ?? 0))}</td>
+    </tr>`).join('') || '<tr><td colspan="4" class="empty">Sin comisiones este período</td></tr>'}</tbody>
+  </table>
+
+  ${d.premios_pendientes.length ? `
+  <h1>⏳ Premios pendientes (resolver a mano)</h1>
+  <table>
+    <thead><tr><th>Código</th><th>Referidor</th><th>Referido que pagó</th><th>Fecha</th></tr></thead>
+    <tbody>${d.premios_pendientes.map(r => `<tr>
+      <td><strong>${esc(r.code)}</strong></td><td>${esc(r.referidor)}</td>
+      <td>${esc(r.referido)}</td><td>${fecha(r.first_payment_at)}</td>
+    </tr>`).join('')}</tbody>
+  </table>` : ''}
+
+  <h1>Últimos eventos de pago directo</h1>
+  <table>
+    <thead><tr><th>Fecha</th><th>Acción</th><th>Email</th><th>Plan</th><th>Detalle</th></tr></thead>
+    <tbody>${d.eventos.map(e => `<tr>
+      <td style="white-space:nowrap;">${fechaHora(e.created_at)}</td>
+      <td class="${e.action === 'activated' || e.action === 'extended' ? 'ok' : e.action === 'error' ? 'off' : 'warn'}">${esc(e.action)}</td>
+      <td>${esc(e.payer_email)}</td><td>${esc(e.plan_id)}</td>
+      <td style="max-width:340px;">${esc(e.detail)}</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="empty">Sin eventos</td></tr>'}</tbody>
+  </table>`;
+}
+
+// Sesión previa en esta pestaña
+const saved = sessionStorage.getItem('panel_token');
+if (saved) cargar(saved);
+document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
+</script>
+</body>
+</html>
