@@ -115,14 +115,14 @@ function salir() {
   location.reload();
 }
 
-let TOKEN = null, DATOS = null, RF_EDIT = null; // RF_EDIT: código en edición (null = modo crear)
+let TOKEN = null, DATOS = null, RF_EDIT = null, RR_EDIT = null; // *_EDIT: en edición (null = modo crear)
 
 async function cargar(token) {
   const r = await fetch(API, { headers: { 'Authorization': 'Bearer ' + token } });
   if (r.status === 401) { sessionStorage.removeItem('panel_token'); location.reload(); return; }
   if (r.status === 403) { $('login-err').textContent = 'Acceso restringido al administrador.'; return; }
   const d = await r.json();
-  TOKEN = token; DATOS = d; RF_EDIT = null;
+  TOKEN = token; DATOS = d; RF_EDIT = null; RR_EDIT = null;
 
   $('login').style.display = 'none';
   $('panel').style.display = 'block';
@@ -190,9 +190,10 @@ async function cargar(token) {
           <option value="consultant">👨‍💼 Consultor</option>
           <option value="clinic">🏥 Clínica que refiere</option>
         </select></div>
-      <div class="field"><label for="rf-name">Nombre del referidor</label>
-        <input id="rf-name" placeholder="Silvia Gómez">
-        <div class="hint">Se muestra al canjear: «cortesía de …»</div></div>
+      <div class="field"><label for="rf-ref">Referidor</label>
+        <select id="rf-ref">${(d.referidores ?? []).filter(r => r.active !== false).map(r =>
+          `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('') || '<option value="">— No hay referidores —</option>'}</select>
+        <div class="hint">Se muestra al canjear: «cortesía de …». ¿Falta? Agregalo en «Referidores» (abajo)</div></div>
       <div class="field"><label for="rf-days">Días de regalo</label>
         <input id="rf-days" type="number" min="1" max="365" value="60"></div>
       <div class="field"><label for="rf-plan">Plan de regalo</label>
@@ -235,6 +236,51 @@ async function cargar(token) {
     </tr>`).join('') || '<tr><td colspan="10" class="empty">Sin códigos creados</td></tr>'}</tbody>
   </table>
 
+
+  <h1>Referidores</h1>
+  <div class="form-card" id="rr-form">
+    <h2 id="rr-title">➕ Nuevo referidor</h2>
+    <div class="form-grid">
+      <div class="field"><label for="rr-name">Nombre</label>
+        <input id="rr-name" placeholder="Vanina La Sala">
+        <div class="hint">Identidad única: sus códigos y liquidaciones se agrupan por este nombre</div></div>
+      <div class="field"><label for="rr-payout">Cobra comisión por</label>
+        <select id="rr-payout" onchange="rrPayoutChange()">
+          <option value="">— Sin definir —</option>
+          <option value="efectivo">💵 Efectivo</option>
+          <option value="transferencia">🏦 Transferencia</option>
+        </select></div>
+      <div class="field rr-bank" style="display:none;"><label for="rr-holder">Titular de la cuenta</label>
+        <input id="rr-holder"></div>
+      <div class="field rr-bank" style="display:none;"><label for="rr-bank">Banco / billetera</label>
+        <input id="rr-bank"></div>
+      <div class="field rr-bank" style="display:none;"><label for="rr-cbu">CBU/CVU o alias</label>
+        <input id="rr-cbu"></div>
+      <div class="field rr-bank" style="display:none;"><label for="rr-cuit">CUIT/CUIL</label>
+        <input id="rr-cuit"></div>
+      <div class="field"><label for="rr-notes">Notas</label>
+        <input id="rr-notes" placeholder="Opcional"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-sm" id="rr-submit" onclick="guardarReferidor()">Agregar referidor</button>
+      <button class="btn btn-sm btn-ghost" id="rr-cancel" style="display:none;" onclick="rrModoCrear()">Cancelar edición</button>
+      <span class="form-msg" id="rr-msg"></span>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Referidor</th><th>Códigos</th><th>Cobro</th><th>Datos bancarios</th><th>Notas</th><th>Acciones</th></tr></thead>
+    <tbody>${(d.referidores ?? []).map(r => `<tr>
+      <td><strong>${esc(r.name)}</strong></td>
+      <td>${(d.codigos ?? []).filter(c => c.referrer_id === r.id).map(c => esc(c.code)).join(', ') || '—'}</td>
+      <td>${r.payout_method === 'transferencia' ? '🏦 Transferencia' : r.payout_method === 'efectivo' ? '💵 Efectivo' : '—'}</td>
+      <td>${r.payout_method === 'transferencia'
+          ? [r.bank_holder, r.bank_name, r.bank_cbu, r.bank_cuit ? 'CUIT ' + r.bank_cuit : null].filter(Boolean).map(esc).join(' · ') || '<span class="warn">⚠ faltan datos</span>'
+          : '—'}</td>
+      <td>${esc(r.notes ?? '') || '—'}</td>
+      <td><button class="rowbtn" onclick="editarReferidor('${esc(r.id)}')">✏️ Editar</button></td>
+    </tr>`).join('') || '<tr><td colspan="6" class="empty">Sin referidores — creá el primero acá arriba</td></tr>'}</tbody>
+  </table>
+
   <h1>Canjes</h1>
   <table>
     <thead><tr><th>Código</th><th>Referidor</th><th>Clínica referida</th><th>Plan</th><th>Canjeado</th><th>1er pago</th><th>Premio</th></tr></thead>
@@ -250,11 +296,14 @@ async function cargar(token) {
 
   <h1>Liquidación consultores (últimos 30 días)</h1>
   <table>
-    <thead><tr><th>Código</th><th>Consultor</th><th>Referidos que pagaron</th><th>Comisión</th></tr></thead>
+    <thead><tr><th>Código</th><th>Consultor</th><th>Referidos que pagaron</th><th>Comisión</th><th>Cobro</th></tr></thead>
     <tbody>${d.comisiones.map(c => `<tr>
       <td><strong>${esc(c.code)}</strong></td><td>${esc(c.consultor)}</td>
       <td>${c.referidos}</td><td>${plata(Number(c.comision_total ?? 0))}</td>
-    </tr>`).join('') || '<tr><td colspan="4" class="empty">Sin comisiones este período</td></tr>'}</tbody>
+      <td>${c.payout_method === 'transferencia'
+          ? `🏦 ${[c.bank_cbu, c.bank_holder].filter(Boolean).map(esc).join(' · ')}`
+          : c.payout_method === 'efectivo' ? '💵 Efectivo' : '—'}</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="empty">Sin comisiones este período</td></tr>'}</tbody>
   </table>
 
   ${d.premios_pendientes.length ? `
@@ -315,7 +364,8 @@ function refModoCrear() {
   $('rf-msg').textContent = '';
   $('rf-code').value = ''; $('rf-code').disabled = false;
   $('rf-kind').disabled = false;
-  $('rf-name').value = ''; $('rf-days').value = 60; $('rf-plan').value = 'clinica';
+  if ($('rf-ref').options.length) $('rf-ref').selectedIndex = 0;
+  $('rf-days').value = 60; $('rf-plan').value = 'clinica';
   $('rf-pct').value = 20; $('rf-months').value = 6;
   $('rf-max').value = ''; $('rf-notes').value = '';
   refKindChange();
@@ -331,7 +381,7 @@ function editarCodigo(code) {
   $('rf-msg').textContent = '';
   $('rf-code').value = c.code; $('rf-code').disabled = true;
   $('rf-kind').value = c.kind; $('rf-kind').disabled = true; // el tipo no se cambia
-  $('rf-name').value = c.display_name ?? '';
+  if (c.referrer_id) $('rf-ref').value = c.referrer_id;
   $('rf-days').value = c.trial_days ?? 60;
   $('rf-plan').value = c.plan_id ?? 'clinica';
   $('rf-pct').value = c.commission_pct ?? 20;
@@ -348,7 +398,7 @@ async function guardarCodigo() {
   msg.className = 'form-msg'; msg.textContent = 'Guardando…';
   const kind = $('rf-kind').value;
   const base = {
-    display_name: $('rf-name').value.trim(),
+    referrer_id: $('rf-ref').value,
     trial_days: $('rf-days').value,
     plan_id: $('rf-plan').value,
     max_redemptions: $('rf-max').value,
@@ -380,6 +430,69 @@ async function toggleCodigo(code, activar) {
   const r = await postAPI({ action: 'toggle_code', code, active: act });
   if (r.ok) { await cargar(TOKEN); document.getElementById('referidos').scrollIntoView(); }
   else alert(r.error ?? 'Error al cambiar el estado');
+}
+
+// ── Gestión de referidores ───────────────────────────────────────────────────
+function rrPayoutChange() {
+  const esTransfer = $('rr-payout').value === 'transferencia';
+  document.querySelectorAll('.rr-bank').forEach(el => el.style.display = esTransfer ? '' : 'none');
+}
+
+function rrModoCrear() {
+  RR_EDIT = null;
+  $('rr-title').textContent = '➕ Nuevo referidor';
+  $('rr-submit').textContent = 'Agregar referidor';
+  $('rr-cancel').style.display = 'none';
+  $('rr-msg').textContent = '';
+  $('rr-name').value = ''; $('rr-payout').value = '';
+  $('rr-holder').value = ''; $('rr-bank').value = ''; $('rr-cbu').value = ''; $('rr-cuit').value = '';
+  $('rr-notes').value = '';
+  rrPayoutChange();
+}
+
+function editarReferidor(id) {
+  const r = (DATOS?.referidores ?? []).find(x => x.id === id);
+  if (!r) return;
+  RR_EDIT = id;
+  $('rr-title').textContent = `✏️ Editando ${r.name}`;
+  $('rr-submit').textContent = 'Guardar cambios';
+  $('rr-cancel').style.display = '';
+  $('rr-msg').textContent = '';
+  $('rr-name').value = r.name ?? '';
+  $('rr-payout').value = r.payout_method ?? '';
+  $('rr-holder').value = r.bank_holder ?? '';
+  $('rr-bank').value = r.bank_name ?? '';
+  $('rr-cbu').value = r.bank_cbu ?? '';
+  $('rr-cuit').value = r.bank_cuit ?? '';
+  $('rr-notes').value = r.notes ?? '';
+  rrPayoutChange();
+  $('rr-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function guardarReferidor() {
+  const msg = $('rr-msg');
+  msg.className = 'form-msg'; msg.textContent = 'Guardando…';
+  const body = {
+    action: RR_EDIT ? 'update_referrer' : 'create_referrer',
+    ...(RR_EDIT ? { id: RR_EDIT } : {}),
+    name: $('rr-name').value.trim(),
+    payout_method: $('rr-payout').value,
+    bank_holder: $('rr-holder').value,
+    bank_name: $('rr-bank').value,
+    bank_cbu: $('rr-cbu').value,
+    bank_cuit: $('rr-cuit').value,
+    notes: $('rr-notes').value,
+  };
+  const r = await postAPI(body);
+  if (r.ok) {
+    msg.className = 'form-msg ok';
+    msg.textContent = RR_EDIT ? `Referidor ${r.referrer.name} actualizado.` : `Referidor ${r.referrer.name} agregado.`;
+    await cargar(TOKEN);
+    document.getElementById('referidos').scrollIntoView();
+  } else {
+    msg.className = 'form-msg err-msg';
+    msg.textContent = r.error ?? 'Error desconocido';
+  }
 }
 
 // ── Revenue histórico: gráfico de líneas (SVG inline, sin dependencias) ──────
