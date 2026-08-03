@@ -45,6 +45,22 @@
   .btn:hover { background: #0052a3; }
   .err { color: #ef4444; font-size: 13px; margin-bottom: 10px; min-height: 16px; }
   .linkbtn { background: none; border: none; color: #0066cc; cursor: pointer; font-size: 13px; }
+  /* gestión de códigos */
+  .form-card { background: white; border-radius: 8px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin: 12px 0 20px; }
+  .form-card h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+  .field label { display: block; font-size: 11px; text-transform: uppercase; color: #999; margin-bottom: 4px; }
+  .field input, .field select { width: 100%; padding: 9px 10px; margin: 0; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; background: white; }
+  .field .hint { font-size: 11px; color: #999; margin-top: 3px; }
+  .form-actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  .btn-sm { width: auto; padding: 9px 18px; font-size: 13px; }
+  .btn-ghost { background: white; color: #333; border: 1px solid #ddd; }
+  .btn-ghost:hover { background: #f5f5f5; }
+  .form-msg { font-size: 13px; min-height: 16px; }
+  .form-msg.ok { color: #10b981; } .form-msg.err-msg { color: #ef4444; }
+  .rowbtn { background: none; border: 1px solid #ddd; border-radius: 5px; padding: 4px 9px; font-size: 12px; cursor: pointer; color: #333; white-space: nowrap; }
+  .rowbtn:hover { border-color: #0066cc; color: #0066cc; }
+  .rowbtn.danger:hover { border-color: #ef4444; color: #ef4444; }
 </style>
 </head>
 <body>
@@ -99,11 +115,14 @@ function salir() {
   location.reload();
 }
 
+let TOKEN = null, DATOS = null, RF_EDIT = null; // RF_EDIT: código en edición (null = modo crear)
+
 async function cargar(token) {
   const r = await fetch(API, { headers: { 'Authorization': 'Bearer ' + token } });
   if (r.status === 401) { sessionStorage.removeItem('panel_token'); location.reload(); return; }
   if (r.status === 403) { $('login-err').textContent = 'Acceso restringido al administrador.'; return; }
   const d = await r.json();
+  TOKEN = token; DATOS = d; RF_EDIT = null;
 
   $('login').style.display = 'none';
   $('panel').style.display = 'block';
@@ -159,15 +178,61 @@ async function cargar(token) {
     <div class="card"><div class="card-title">Comisiones 30d</div><div class="card-value">${plata(ref.comisiones_30d)}</div>
       <div class="card-sub">a liquidar a consultores</div></div>
   </div>
+
+  <div class="form-card" id="ref-form">
+    <h2 id="rf-title">➕ Crear código</h2>
+    <div class="form-grid">
+      <div class="field"><label for="rf-code">Código</label>
+        <input id="rf-code" placeholder="SILVIA20" maxlength="20" style="text-transform:uppercase;">
+        <div class="hint">4-20 letras mayúsculas y números</div></div>
+      <div class="field"><label for="rf-kind">Tipo</label>
+        <select id="rf-kind" onchange="refKindChange()">
+          <option value="consultant">👨‍💼 Consultor</option>
+          <option value="clinic">🏥 Clínica que refiere</option>
+        </select></div>
+      <div class="field"><label for="rf-name">Nombre del referidor</label>
+        <input id="rf-name" placeholder="Silvia Gómez">
+        <div class="hint">Se muestra al canjear: «cortesía de …»</div></div>
+      <div class="field"><label for="rf-days">Días de regalo</label>
+        <input id="rf-days" type="number" min="1" max="365" value="60"></div>
+      <div class="field"><label for="rf-plan">Plan de regalo</label>
+        <select id="rf-plan">
+          <option value="profesional">Profesional</option>
+          <option value="clinica" selected>Clínica</option>
+          <option value="clinica_pro">Clínica Pro</option>
+        </select></div>
+      <div class="field rf-consultant"><label for="rf-pct">Comisión %</label>
+        <input id="rf-pct" type="number" min="0" max="100" value="20">
+        <div class="hint">Se usa al calcular cada liquidación (afecta lo no liquidado)</div></div>
+      <div class="field rf-consultant"><label for="rf-months">Meses de comisión</label>
+        <input id="rf-months" type="number" min="1" max="60" value="6"></div>
+      <div class="field rf-clinic" style="display:none;"><label for="rf-org">Clínica referidora</label>
+        <select id="rf-org">${(d.orgs ?? []).map(o => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select>
+        <div class="hint">Recibe +30 días al 1er pago del referido</div></div>
+      <div class="field"><label for="rf-max">Cupo de canjes</label>
+        <input id="rf-max" type="number" min="1" placeholder="Sin tope"></div>
+      <div class="field"><label for="rf-notes">Notas</label>
+        <input id="rf-notes" placeholder="Opcional"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-sm" id="rf-submit" onclick="guardarCodigo()">Crear código</button>
+      <button class="btn btn-sm btn-ghost" id="rf-cancel" style="display:none;" onclick="refModoCrear()">Cancelar edición</button>
+      <span class="form-msg" id="rf-msg"></span>
+    </div>
+  </div>
+
   <table>
-    <thead><tr><th>Código</th><th>Tipo</th><th>Referidor</th><th>Plan trial</th><th>Días</th><th>Canjes</th><th>Convertidos</th><th>Estado</th></tr></thead>
+    <thead><tr><th>Código</th><th>Tipo</th><th>Referidor</th><th>Plan regalo</th><th>Días</th><th>Comisión</th><th>Canjes</th><th>Convertidos</th><th>Estado</th><th>Acciones</th></tr></thead>
     <tbody>${d.codigos.map(c => `<tr>
       <td><strong>${esc(c.code)}</strong></td>
       <td>${c.kind === 'consultant' ? '👨‍💼 Consultor' : '🏥 Clínica'}</td>
       <td>${esc(c.display_name)}</td><td>${esc(c.plan_id)}</td><td>${c.trial_days}</td>
-      <td>${c.canjes}</td><td>${c.convertidos}</td>
+      <td>${c.kind === 'consultant' && c.commission_pct != null ? `${c.commission_pct}% × ${c.commission_months ?? 6}m` : '—'}</td>
+      <td>${c.canjes}${c.max_redemptions ? ' / ' + c.max_redemptions : ''}</td><td>${c.convertidos}</td>
       <td class="${c.active ? 'ok' : 'off'}">${c.active ? '✓ Activo' : '✗ Inactivo'}</td>
-    </tr>`).join('') || '<tr><td colspan="8" class="empty">Sin códigos creados</td></tr>'}</tbody>
+      <td><button class="rowbtn" onclick="editarCodigo('${esc(c.code)}')">✏️ Editar</button>
+          <button class="rowbtn ${c.active ? 'danger' : ''}" onclick="toggleCodigo('${esc(c.code)}', ${c.active ? 'false' : 'true'})">${c.active ? 'Desactivar' : 'Reactivar'}</button></td>
+    </tr>`).join('') || '<tr><td colspan="10" class="empty">Sin códigos creados</td></tr>'}</tbody>
   </table>
 
   <h1>Canjes</h1>
@@ -224,6 +289,97 @@ async function cargar(token) {
     </tr>`).join('') || '<tr><td colspan="5" class="empty">Sin eventos</td></tr>'}</tbody>
   </table>`;
   wireRevenueHover();
+}
+
+// ── Gestión de códigos de referido ───────────────────────────────────────────
+async function postAPI(body) {
+  const r = await fetch(API, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+function refKindChange() {
+  const esConsultor = $('rf-kind').value === 'consultant';
+  document.querySelectorAll('.rf-consultant').forEach(el => el.style.display = esConsultor ? '' : 'none');
+  document.querySelectorAll('.rf-clinic').forEach(el => el.style.display = esConsultor ? 'none' : '');
+}
+
+function refModoCrear() {
+  RF_EDIT = null;
+  $('rf-title').textContent = '➕ Crear código';
+  $('rf-submit').textContent = 'Crear código';
+  $('rf-cancel').style.display = 'none';
+  $('rf-msg').textContent = '';
+  $('rf-code').value = ''; $('rf-code').disabled = false;
+  $('rf-kind').disabled = false;
+  $('rf-name').value = ''; $('rf-days').value = 60; $('rf-plan').value = 'clinica';
+  $('rf-pct').value = 20; $('rf-months').value = 6;
+  $('rf-max').value = ''; $('rf-notes').value = '';
+  refKindChange();
+}
+
+function editarCodigo(code) {
+  const c = (DATOS?.codigos ?? []).find(x => x.code === code);
+  if (!c) return;
+  RF_EDIT = code;
+  $('rf-title').textContent = `✏️ Editando ${code}`;
+  $('rf-submit').textContent = 'Guardar cambios';
+  $('rf-cancel').style.display = '';
+  $('rf-msg').textContent = '';
+  $('rf-code').value = c.code; $('rf-code').disabled = true;
+  $('rf-kind').value = c.kind; $('rf-kind').disabled = true; // el tipo no se cambia
+  $('rf-name').value = c.display_name ?? '';
+  $('rf-days').value = c.trial_days ?? 60;
+  $('rf-plan').value = c.plan_id ?? 'clinica';
+  $('rf-pct').value = c.commission_pct ?? 20;
+  $('rf-months').value = c.commission_months ?? 6;
+  if (c.referrer_org_id) $('rf-org').value = c.referrer_org_id;
+  $('rf-max').value = c.max_redemptions ?? '';
+  $('rf-notes').value = c.notes ?? '';
+  refKindChange();
+  $('ref-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function guardarCodigo() {
+  const msg = $('rf-msg');
+  msg.className = 'form-msg'; msg.textContent = 'Guardando…';
+  const kind = $('rf-kind').value;
+  const base = {
+    display_name: $('rf-name').value.trim(),
+    trial_days: $('rf-days').value,
+    plan_id: $('rf-plan').value,
+    max_redemptions: $('rf-max').value,
+    notes: $('rf-notes').value,
+  };
+  if (kind === 'consultant') {
+    base.commission_pct = $('rf-pct').value;
+    base.commission_months = $('rf-months').value;
+  }
+  const body = RF_EDIT
+    ? { action: 'update_code', code: RF_EDIT, ...base }
+    : { action: 'create_code', code: $('rf-code').value.trim().toUpperCase(), kind, ...base,
+        ...(kind === 'clinic' ? { referrer_org_id: $('rf-org').value } : {}) };
+  const r = await postAPI(body);
+  if (r.ok) {
+    msg.className = 'form-msg ok';
+    msg.textContent = RF_EDIT ? `Código ${r.code.code} actualizado.` : `Código ${r.code.code} creado.`;
+    await cargar(TOKEN);
+    document.getElementById('referidos').scrollIntoView();
+  } else {
+    msg.className = 'form-msg err-msg';
+    msg.textContent = r.error ?? 'Error desconocido';
+  }
+}
+
+async function toggleCodigo(code, activar) {
+  const act = activar === true || activar === 'true';
+  if (!act && !confirm(`¿Desactivar ${code}? Nadie más va a poder canjearlo (los canjes ya hechos no se tocan).`)) return;
+  const r = await postAPI({ action: 'toggle_code', code, active: act });
+  if (r.ok) { await cargar(TOKEN); document.getElementById('referidos').scrollIntoView(); }
+  else alert(r.error ?? 'Error al cambiar el estado');
 }
 
 // ── Revenue histórico: gráfico de líneas (SVG inline, sin dependencias) ──────

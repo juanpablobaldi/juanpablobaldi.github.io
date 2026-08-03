@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Página para compartir por WhatsApp (no linkeada desde la landing) -->
+<meta name="robots" content="noindex">
+<title>Canjeá tu código — Antes &amp; Después</title>
+<meta name="description" content="Te recomendaron Antes y Después: canjeá tu código de referido y usá el plan Clínica gratis durante 60 días. Sin tarjeta.">
+<link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --hueso:#FAFAF8;
+    --tinta:#101014;
+    --indigo:#6366F1;
+    --verde:#16A34A;
+    --rojo:#EF4444;
+    --niebla:#8A8F98;
+    --linea:#E7E6E1;
+    --radius:18px;
+    --disp:"Bricolage Grotesque",Georgia,serif;
+    --body:"Instrument Sans",-apple-system,system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    *,*::before,*::after{animation:none!important;transition:none!important}
+  }
+  body{font-family:var(--body);color:var(--tinta);background:var(--hueso);-webkit-font-smoothing:antialiased;line-height:1.55}
+  a{color:inherit}
+  :focus-visible{outline:2px solid var(--indigo);outline-offset:3px;border-radius:4px}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+  .mono{font-family:var(--mono)}
+
+  nav{position:sticky;top:0;z-index:50;background:rgba(250,250,248,.86);backdrop-filter:blur(12px);border-bottom:1px solid var(--linea)}
+  .nav-in{display:flex;align-items:center;gap:28px;height:64px}
+  .mark{display:flex;align-items:center;gap:10px;font-weight:600;text-decoration:none;font-size:15.5px;letter-spacing:-.01em}
+  .mark img{width:28px;height:28px;border-radius:7px}
+  .mark em{font-style:normal;color:var(--niebla)}
+  .nav-links{margin-left:auto;display:flex;align-items:center;gap:22px;font-size:14px}
+  .btn{display:inline-flex;align-items:center;gap:8px;background:var(--tinta);color:#fff;border-radius:999px;
+       padding:11px 20px;font-size:14.5px;font-weight:600;text-decoration:none;border:1px solid var(--tinta);
+       transition:transform .15s ease, background .15s ease}
+  .btn:hover{background:#26262e;transform:translateY(-1px)}
+  .btn.ghost{background:transparent;color:var(--tinta);border-color:var(--linea)}
+  .btn.ghost:hover{background:#f1f0ec}
+  .btn.sm{padding:8px 16px;font-size:13.5px}
+
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo);font-weight:500;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+  .eyebrow::before{content:"";width:22px;height:1px;background:var(--indigo)}
+  h1{font-family:var(--disp);font-size:clamp(36px,4.4vw,54px);line-height:1.06;letter-spacing:-.025em;font-weight:600}
+  h1 .verde{color:var(--verde)}
+  h2{font-family:var(--disp);font-size:clamp(26px,3.2vw,36px);line-height:1.12;letter-spacing:-.02em;font-weight:600}
+
+  /* Hero */
+  .hero{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,5fr);gap:56px;align-items:center;padding:72px 0 60px}
+  .hero p.lede{margin:22px 0 30px;font-size:17px;color:#4b4e57;max-width:46ch}
+  .hero-ctas{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .hero-note{margin-top:14px;font-family:var(--mono);font-size:12px;color:var(--niebla)}
+
+  /* tarjeta regalo */
+  .gift{background:#fff;border:1px solid var(--linea);border-radius:var(--radius);
+        box-shadow:0 24px 60px -30px rgba(16,16,20,.25);overflow:hidden}
+  .gift-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--linea)}
+  .gift-head .t{font-weight:600;font-size:14px}
+  .gift-head .s{font-family:var(--mono);font-size:11.5px;color:var(--niebla);margin-left:auto}
+  .gift-body{padding:30px 26px;text-align:center}
+  .gift-body .big{font-family:var(--disp);font-size:44px;font-weight:700;letter-spacing:-.02em;color:var(--verde);line-height:1}
+  .gift-body .sub{margin-top:8px;font-size:15px;color:#4b4e57}
+  .code-slot{margin:22px auto 0;max-width:280px;border:2px dashed var(--indigo);border-radius:12px;padding:14px;
+             font-family:var(--mono);font-size:20px;font-weight:600;letter-spacing:.18em;color:var(--indigo);background:#F5F5FF}
+  .gift-foot{display:flex;gap:18px;justify-content:center;padding:12px 16px;border-top:1px solid var(--linea);
+             font-family:var(--mono);font-size:11.5px;color:var(--niebla)}
+
+  .strip{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);background:#fff}
+  .strip-in{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;padding:18px 0;
+            font-family:var(--mono);font-size:12.5px;color:#4b4e57}
+  .strip-in b{color:var(--tinta);font-weight:600}
+
+  section{padding:84px 0}
+  .sec-head{max-width:640px;margin-bottom:52px}
+  .sec-head p{margin-top:14px;color:#4b4e57;font-size:16px}
+
+  /* Pasos */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .step{background:#fff;border:1px solid var(--linea);border-radius:var(--radius);padding:26px 24px}
+  .step .n{font-family:var(--mono);font-size:12px;color:var(--indigo);font-weight:600;letter-spacing:.1em}
+  .step h3{font-family:var(--disp);font-size:20px;margin:12px 0 8px;font-weight:600;letter-spacing:-.01em}
+  .step p{font-size:14.5px;color:#4b4e57}
+  .step .stores{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+
+  /* Capturas: reemplazar cada .shot-ph por
+     <img class="shot-img" src="img/referidos-pasoN.png" alt="…">
+     cuando estén las capturas reales del build con la UI de referidos. */
+  .shot-wrap{margin-top:20px;display:flex;justify-content:center}
+  .shot-ph,.shot-img{width:78%;max-width:220px;aspect-ratio:9/19;border-radius:22px}
+  .shot-img{object-fit:cover;border:1px solid var(--linea);box-shadow:0 14px 34px -16px rgba(16,16,20,.35);display:block}
+  .shot-ph{background:#17171C;border:1px solid #2A2A32;box-shadow:0 14px 34px -16px rgba(16,16,20,.35);
+           display:flex;align-items:center;justify-content:center;padding:14px}
+  .shot-ph span{border:1.5px dashed #3E3E48;border-radius:14px;width:100%;height:100%;
+                display:flex;align-items:center;justify-content:center;text-align:center;
+                font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:#8A8F98;padding:12px;line-height:1.7}
+
+  /* Ya tengo cuenta */
+  .alt{background:#fff;border-top:1px solid var(--linea);border-bottom:1px solid var(--linea)}
+  .alt-card{display:grid;grid-template-columns:1.2fr 1fr;gap:48px;align-items:center}
+  .alt-card ol{margin:22px 0 0 0;padding-left:0;list-style:none;counter-reset:paso}
+  .alt-card li{counter-increment:paso;display:flex;gap:14px;margin-bottom:16px;font-size:15px;color:#33363e;align-items:baseline}
+  .alt-card li::before{content:counter(paso);font-family:var(--mono);font-size:12px;font-weight:600;color:var(--indigo);
+                       border:1px solid var(--indigo);border-radius:50%;width:22px;height:22px;flex-shrink:0;
+                       display:inline-flex;align-items:center;justify-content:center}
+  .alt-card li b{font-weight:600}
+
+  /* FAQ */
+  .faq{max-width:720px}
+  .faq details{background:#fff;border:1px solid var(--linea);border-radius:12px;margin-bottom:10px;padding:0 20px}
+  .faq summary{cursor:pointer;font-weight:600;font-size:15px;padding:16px 0;list-style:none;display:flex;align-items:center}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:"+";margin-left:auto;font-family:var(--mono);font-size:18px;color:var(--niebla)}
+  .faq details[open] summary::after{content:"–"}
+  .faq details p{padding:0 0 16px;font-size:14.5px;color:#4b4e57}
+
+  .final{text-align:center;padding:90px 0 100px}
+  .final p{color:#4b4e57;margin:16px auto 32px;max-width:46ch}
+
+  footer{border-top:1px solid var(--linea);padding:28px 0;font-size:13px;color:var(--niebla)}
+  .foot-in{display:flex;flex-wrap:wrap;gap:18px;align-items:center}
+  .foot-in a{text-decoration:none}
+  .foot-in a:hover{color:var(--tinta)}
+  .foot-in .right{margin-left:auto;font-family:var(--mono);font-size:11.5px}
+
+  .rv{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+  .rv.in{opacity:1;transform:none}
+
+  @media (max-width:960px){
+    .hero{grid-template-columns:1fr;gap:40px;padding:52px 0 44px}
+    .steps{grid-template-columns:1fr}
+    .alt-card{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-in">
+    <a class="mark" href="index.html"><img src="icon.png" alt="" width="28" height="28">Antes<em>&amp;</em>Después</a>
+    <div class="nav-links">
+      <a class="btn sm" href="#pasos">Canjear mi código</a>
+    </div>
+  </div>
+</nav>
+
+<header>
+  <div class="wrap hero">
+    <div>
+      <div class="eyebrow">Programa de referidos</div>
+      <h1>Te regalaron <span class="verde">60 días</span> del plan Clínica.</h1>
+      <p class="lede">Alguien que conoce tu clínica te recomendó <strong>Antes &amp; Después</strong>,
+      la app de fotografía clínica con cámara guiada. Con tu código de referido activás el plan
+      Clínica completo, gratis y <strong>sin cargar tarjeta</strong>. Tardás dos minutos.</p>
+      <div class="hero-ctas">
+        <a class="btn" href="#pasos">Ver cómo canjearlo</a>
+        <a class="btn ghost" href="index.html">Conocer la app</a>
+      </div>
+      <p class="hero-note">Sin tarjeta · Sin permanencia · Un canje por clínica</p>
+    </div>
+
+    <div class="gift">
+      <div class="gift-head">
+        <span class="t">Tu regalo de bienvenida</span>
+        <span class="s">código de referido</span>
+      </div>
+      <div class="gift-body">
+        <div class="big">60 días</div>
+        <div class="sub">de plan Clínica, el plan completo para equipos</div>
+        <div class="code-slot">TU-CÓDIGO</div>
+      </div>
+      <div class="gift-foot">
+        <span>✓ sin tarjeta</span><span>✓ equipo ilimitado</span><span>✓ se activa al instante</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="strip">
+  <div class="wrap strip-in">
+    <span><b>60 días</b> de plan Clínica gratis</span>
+    <span><b>Sin tarjeta</b> ni datos de pago</span>
+    <span><b>2 minutos</b> para activarlo</span>
+    <span><b>Nada se pierde</b> al terminar</span>
+  </div>
+</div>
+
+<!-- Pasos -->
+<section id="pasos">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="eyebrow">El canje</div>
+      <h2>Tres pasos y queda activo.</h2>
+      <p>El código se ingresa al crear tu clínica en la app. Si quien te la recomendó está con vos, mejor: lo hacen juntos.</p>
+    </div>
+    <div class="steps">
+      <div class="step rv">
+        <span class="n">PASO 1</span>
+        <h3>Descargá la app</h3>
+        <p>Está en el App Store y en Google Play. Es gratis descargarla y crear tu cuenta.</p>
+        <div class="stores">
+          <a class="btn" href="https://apps.apple.com/app/id6790166290">Descargar en App Store</a>
+          <a class="btn" href="https://play.google.com/store/apps/details?id=com.jpbaldi.antesydespues">Descargar en Google Play</a>
+        </div>
+      </div>
+      <div class="step rv">
+        <span class="n">PASO 2</span>
+        <h3>Creá tu clínica con el código</h3>
+        <p>Al registrarte y crear tu clínica vas a ver el campo <strong>«¿Tenés un código de referido?»</strong>. Escribilo ahí, tal cual te lo pasaron.</p>
+        <div class="shot-wrap">
+          <!-- Reemplazar por: <img class="shot-img" src="img/referidos-paso2.png" alt="Registro de la clínica con el campo de código de referido"> -->
+          <div class="shot-ph"><span>CAPTURA<br>registro con campo<br>«código de referido»</span></div>
+        </div>
+      </div>
+      <div class="step rv">
+        <span class="n">PASO 3</span>
+        <h3>Listo: plan Clínica activo</h3>
+        <p>Vas a ver la confirmación con la fecha exacta hasta la que tenés el plan de regalo. Desde ese momento, cámara guiada, equipo y todo lo demás.</p>
+        <div class="shot-wrap">
+          <!-- Reemplazar por: <img class="shot-img" src="img/referidos-paso3.png" alt="Confirmación del código aplicado con la fecha de vencimiento"> -->
+          <div class="shot-ph"><span>CAPTURA<br>confirmación<br>«código aplicado»</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Ya tengo cuenta -->
+<section class="alt">
+  <div class="wrap alt-card">
+    <div class="rv">
+      <div class="eyebrow">¿Ya usás la app?</div>
+      <h2>También podés canjearlo desde Cuenta.</h2>
+      <ol>
+        <li><span>Abrí la pestaña <b>Cuenta</b> en la app.</span></li>
+        <li><span>Tocá <b>«¿Tenés un código de referido? Canjealo»</b> (aparece mientras estés en el plan gratuito).</span></li>
+        <li><span>Ingresá el código y confirmá. El plan Clínica queda activo al instante.</span></li>
+      </ol>
+    </div>
+    <div class="shot-wrap rv">
+      <!-- Reemplazar por: <img class="shot-img" src="img/referidos-cuenta.png" alt="Pantalla Cuenta con la opción para canjear un código de referido"> -->
+      <div class="shot-ph"><span>CAPTURA<br>Cuenta →<br>canjear código</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="eyebrow">Dudas típicas</div>
+      <h2>Preguntas frecuentes</h2>
+    </div>
+    <div class="faq rv">
+      <details>
+        <summary>¿Tengo que cargar una tarjeta?</summary>
+        <p>No. El regalo se activa solo con el código: no pedimos datos de pago y no hay ningún cobro automático al terminar.</p>
+      </details>
+      <details>
+        <summary>¿Qué pasa cuando se cumplen los 60 días?</summary>
+        <p>Tu cuenta pasa al plan gratuito: no se borra nada — pacientes, fotos y comparativas quedan intactos. Si querés seguir con el plan Clínica, podés suscribirte desde la app, y la prueba gratis de 14 días de la tienda sigue disponible porque nunca la usaste.</p>
+      </details>
+      <details>
+        <summary>¿Quién puede usar un código?</summary>
+        <p>Clínicas que están en el plan gratuito. Cada clínica puede canjear un código una sola vez.</p>
+      </details>
+      <details>
+        <summary>Me registré sin el código, ¿lo perdí?</summary>
+        <p>No: mientras sigas en el plan gratuito podés canjearlo desde <strong>Cuenta → «¿Tenés un código de referido? Canjealo»</strong>.</p>
+      </details>
+      <details>
+        <summary>¿El código me compromete a algo?</summary>
+        <p>A nada. Sin permanencia, sin tarjeta, sin letra chica: son 60 días del plan completo para que lo pruebes con tu equipo y tus pacientes reales.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- CTA final -->
+<div class="final">
+  <div class="wrap">
+    <div class="eyebrow" style="justify-content:center">Disponible en iPhone y Android</div>
+    <h2 class="rv">Tu código te está esperando.</h2>
+    <p class="rv">Descargá la app, creá tu clínica con el código y sacá tu primera sesión guiada hoy mismo.</p>
+    <div class="hero-ctas rv" style="justify-content:center">
+      <a class="btn" style="font-size:16px;padding:14px 28px" href="https://apps.apple.com/app/id6790166290">Descargar en App Store</a>
+      <a class="btn" style="font-size:16px;padding:14px 28px" href="https://play.google.com/store/apps/details?id=com.jpbaldi.antesydespues">Descargar en Google Play</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap foot-in">
+    <span>© 2026 Antes &amp; Después</span>
+    <a href="https://juanpablobaldi.github.io/antesydespues-legal/privacy.html">Privacidad</a>
+    <a href="https://juanpablobaldi.github.io/antesydespues-legal/soporte.html">Soporte</a>
+    <span class="right">HECHO EN EL CONSULTORIO</span>
+  </div>
+</footer>
+
+<script>
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+  }), { threshold: 0.15 });
+  document.querySelectorAll('.rv').forEach(el => io.observe(el));
+
+  // Link personalizado: referidos.html?c=SILVIA20 muestra el código en la tarjeta
+  const codigo = new URLSearchParams(location.search).get('c');
+  if (codigo && /^[A-Z0-9]{4,20}$/i.test(codigo)) {
+    document.querySelector('.code-slot').textContent = codigo.toUpperCase();
+  }
+</script>
+</body>
+</html>
