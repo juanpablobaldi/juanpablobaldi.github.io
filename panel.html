@@ -9,7 +9,12 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a1a; }
   .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
-  h1 { font-size: 22px; margin: 28px 0 12px; font-weight: 600; }
+  h1 { font-size: 22px; margin: 28px 0 12px; font-weight: 600; scroll-margin-top: 64px; }
+  .nav { position: sticky; top: 0; background: #f8f9fa; padding: 10px 0; display: flex; gap: 8px;
+         flex-wrap: wrap; z-index: 10; border-bottom: 1px solid #eee; }
+  .navbtn { padding: 8px 14px; border-radius: 20px; border: 1px solid #ddd; background: white;
+            font-size: 13px; color: #333; text-decoration: none; }
+  .navbtn:hover { border-color: #0066cc; color: #0066cc; }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 14px 0; }
   .card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
   .card-title { font-size: 12px; text-transform: uppercase; color: #999; margin-bottom: 6px; }
@@ -95,14 +100,23 @@ async function cargar(token) {
 
   const g = d.generales, p = d.planes, f = d.fuentes, ref = d.referidos;
   $('content').innerHTML = `
-  <h1>Métricas generales</h1>
+  <nav class="nav">
+    <a class="navbtn" href="#metricas">📈 Métricas</a>
+    <a class="navbtn" href="#referidos">🤝 Referidos</a>
+    <a class="navbtn" href="#reembolsos">↩️ Reembolsos</a>
+    <a class="navbtn" href="#pagos">💳 Pagos directos</a>
+  </nav>
+  <h1 id="metricas">Métricas generales</h1>
   <div class="grid">
     <div class="card"><div class="card-title">Clínicas totales</div>
       <div class="card-value">${g.clinicas}</div>
       <div class="card-sub">+${g.nuevas_30d} en los últimos 30 días</div></div>
     <div class="card"><div class="card-title">Ingreso mensual (MRR)</div>
       <div class="card-value">${plata(g.mrr)}</div>
-      <div class="card-sub">${g.planes_pagos} plan${g.planes_pagos === 1 ? '' : 'es'} pagos (Apple/Google/directo)</div></div>
+      <div class="card-sub">${g.planes_pagos} plan${g.planes_pagos === 1 ? '' : 'es'} con cobro real (Apple/Google/directo)</div></div>
+    <div class="card"><div class="card-title">En trial (potencial)</div>
+      <div class="card-value">${plata(g.mrr_trial ?? 0)}</div>
+      <div class="card-sub">${g.en_trial ?? 0} clínica${(g.en_trial ?? 0) === 1 ? '' : 's'} en trial del canal directo</div></div>
     <div class="card"><div class="card-title">Planes de cortesía</div>
       <div class="card-value">${g.promos_vigentes}</div>
       <div class="card-sub">promo / referidos vigentes</div></div>
@@ -120,7 +134,7 @@ async function cargar(token) {
     </tbody>
   </table>
 
-  <h1>Referidos</h1>
+  <h1 id="referidos">Referidos</h1>
   <div class="grid">
     <div class="card"><div class="card-title">Códigos activos</div><div class="card-value">${ref.codigos_activos}</div></div>
     <div class="card"><div class="card-title">Canjes totales</div><div class="card-value">${ref.canjes}</div></div>
@@ -171,7 +185,18 @@ async function cargar(token) {
     </tr>`).join('')}</tbody>
   </table>` : ''}
 
-  <h1>Últimos eventos de pago directo</h1>
+  <h1 id="reembolsos">Reembolsos y bajas</h1>
+  <table>
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>Email</th><th>Plan</th><th>Detalle</th></tr></thead>
+    <tbody>${(d.reembolsos ?? []).map(e => `<tr>
+      <td style="white-space:nowrap;">${fechaHora(e.created_at)}</td>
+      <td class="${e.action === 'revoked' ? 'off' : 'warn'}">${e.action === 'revoked' ? '↩️ Reembolso / baja' : '⏸ Cancelación'}</td>
+      <td>${esc(e.payer_email)}</td><td>${esc(e.plan_id)}</td>
+      <td style="max-width:340px;">${esc(e.detail)}</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="empty">Sin reembolsos ni bajas registrados</td></tr>'}</tbody>
+  </table>
+
+  <h1 id="pagos">Últimos eventos de pago directo</h1>
   <table>
     <thead><tr><th>Fecha</th><th>Acción</th><th>Email</th><th>Plan</th><th>Detalle</th></tr></thead>
     <tbody>${d.eventos.map(e => `<tr>
