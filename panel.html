@@ -25,6 +25,16 @@
   th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 13px; }
   th { background: #f5f5f5; font-weight: 600; color: #666; }
   .ok { color: #10b981; } .warn { color: #f59e0b; } .off { color: #ef4444; }
+  /* revenue chart */
+  .chart-card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin: 12px 0; }
+  .chart-wrap { position: relative; }
+  .chart-legend { display: flex; gap: 16px; font-size: 12px; color: #666; margin-bottom: 8px; }
+  .chart-legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .chart-tip { position: absolute; pointer-events: none; background: white; border: 1px solid #ddd;
+               border-radius: 6px; padding: 8px 10px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+               display: none; white-space: nowrap; z-index: 5; }
+  .chart-tip .tip-mes { font-weight: 600; margin-bottom: 3px; color: #1a1a1a; }
+  .chart-tip .tip-row { color: #666; }
   .empty { text-align: center; color: #999; }
   /* login */
   #login { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
@@ -102,6 +112,7 @@ async function cargar(token) {
   $('content').innerHTML = `
   <nav class="nav">
     <a class="navbtn" href="#metricas">📈 Métricas</a>
+    <a class="navbtn" href="#revenue">💰 Revenue</a>
     <a class="navbtn" href="#referidos">🤝 Referidos</a>
     <a class="navbtn" href="#reembolsos">↩️ Reembolsos</a>
     <a class="navbtn" href="#pagos">💳 Pagos directos</a>
@@ -111,6 +122,9 @@ async function cargar(token) {
     <div class="card"><div class="card-title">Clínicas totales</div>
       <div class="card-value">${g.clinicas}</div>
       <div class="card-sub">+${g.nuevas_30d} en los últimos 30 días</div></div>
+    <div class="card"><div class="card-title">Usuarios totales</div>
+      <div class="card-value">${g.usuarios ?? '—'}</div>
+      <div class="card-sub">personas registradas en ${g.clinicas} clínica${g.clinicas === 1 ? '' : 's'}</div></div>
     <div class="card"><div class="card-title">Ingreso mensual (MRR)</div>
       <div class="card-value">${plata(g.mrr)}</div>
       <div class="card-sub">${g.planes_pagos} plan${g.planes_pagos === 1 ? '' : 'es'} con cobro real (Apple/Google/directo)</div></div>
@@ -133,6 +147,9 @@ async function cargar(token) {
       <tr><td>Clínica Pro</td><td>${p.clinica_pro}</td><td>${(d.planes_trial ?? {}).clinica_pro ?? 0}</td><td></td><td>🎁 Promo/Referido</td><td>${f.promo}</td></tr>
     </tbody>
   </table>
+
+  <h1 id="revenue">Revenue histórico</h1>
+  ${revenueSection(d.revenue ?? [])}
 
   <h1 id="referidos">Referidos</h1>
   <div class="grid">
@@ -206,6 +223,101 @@ async function cargar(token) {
       <td style="max-width:340px;">${esc(e.detail)}</td>
     </tr>`).join('') || '<tr><td colspan="5" class="empty">Sin eventos</td></tr>'}</tbody>
   </table>`;
+  wireRevenueHover();
+}
+
+// ── Revenue histórico: gráfico de líneas (SVG inline, sin dependencias) ──────
+const CANALES = [
+  { key: 'directo', label: '💳 Directo (MP)', color: '#0066cc' },
+  { key: 'tiendas', label: '🏪 Tiendas', color: '#ea580c' },
+];
+let REV_MODEL = null; // para el hover: { meses, series, xs, W, H, padL, padR }
+
+function revenueSection(rows) {
+  if (!rows.length) {
+    return `<div class="chart-card"><p class="empty" style="padding:24px 0;">
+      Todavía no hay cobros registrados. El canal directo se registra desde jul 2026;
+      los pagos de tiendas empiezan a acumularse con la monetización activa.</p></div>`;
+  }
+  // Meses continuos entre el primero y el último con datos
+  const [minMes, maxMes] = [rows[0].mes, rows[rows.length - 1].mes].map(m => m.split('-').map(Number));
+  const meses = [];
+  for (let y = minMes[0], mo = minMes[1]; y < maxMes[0] || (y === maxMes[0] && mo <= maxMes[1]); mo === 12 ? (y++, mo = 1) : mo++) {
+    meses.push(`${y}-${String(mo).padStart(2, '0')}`);
+  }
+  const serieActiva = CANALES.filter(c => rows.some(r => r.canal === c.key));
+  const series = serieActiva.map(c => ({
+    ...c,
+    vals: meses.map(m => Number(rows.find(r => r.mes === m && r.canal === c.key)?.total ?? 0)),
+  }));
+
+  const W = 700, H = 240, padL = 64, padR = 90, padT = 14, padB = 28;
+  const maxV = Math.max(1, ...series.flatMap(s => s.vals)) * 1.1;
+  const xs = meses.map((_, i) => padL + (meses.length === 1 ? (W - padL - padR) / 2 : (W - padL - padR) * i / (meses.length - 1)));
+  const yOf = v => H - padB - (H - padT - padB) * v / maxV;
+  const mesCorto = m => new Date(m + '-15').toLocaleDateString('es-AR', { month: 'short', year: '2-digit' });
+  const plataK = v => v >= 1000 ? '$' + Math.round(v / 1000) + 'k' : '$' + Math.round(v);
+
+  // Grilla horizontal recesiva (4 divisiones)
+  const ticks = [0.25, 0.5, 0.75, 1].map(f => Math.round(maxV * f));
+  const grid = ticks.map(t => `<line x1="${padL}" y1="${yOf(t)}" x2="${W - padR}" y2="${yOf(t)}" stroke="#eee"/>
+    <text x="${padL - 8}" y="${yOf(t) + 4}" text-anchor="end" font-size="11" fill="#999">${plataK(t)}</text>`).join('');
+  const xLabels = meses.map((m, i) => `<text x="${xs[i]}" y="${H - 8}" text-anchor="middle" font-size="11" fill="#999">${mesCorto(m)}</text>`).join('');
+
+  const lineas = series.map(s => {
+    const path = s.vals.map((v, i) => `${i ? 'L' : 'M'}${xs[i]},${yOf(v)}`).join(' ');
+    const dots = s.vals.map((v, i) =>
+      `<circle cx="${xs[i]}" cy="${yOf(v)}" r="4" fill="${s.color}" stroke="white" stroke-width="2"/>`).join('');
+    const last = s.vals.length - 1;
+    const endLabel = `<text x="${xs[last] + 10}" y="${yOf(s.vals[last]) + 4}" font-size="12" fill="#666">${s.key === 'directo' ? 'Directo' : 'Tiendas'} ${plataK(s.vals[last])}</text>`;
+    return `<path d="${path}" fill="none" stroke="${s.color}" stroke-width="2"/>${dots}${endLabel}`;
+  }).join('');
+
+  REV_MODEL = { meses, series, xs, W, H, padL, padR };
+  const legend = series.length > 1
+    ? `<div class="chart-legend">${series.map(s => `<span><span class="sw" style="background:${s.color}"></span>${s.label}</span>`).join('')}</div>`
+    : '';
+
+  return `<div class="chart-card">
+    ${legend}
+    <div class="chart-wrap" id="rev-wrap">
+      <svg id="rev-svg" viewBox="0 0 ${W} ${H}" style="width:100%; display:block;">
+        ${grid}${xLabels}
+        <line id="rev-cross" x1="0" y1="${padT}" x2="0" y2="${H - padB}" stroke="#ccc" stroke-dasharray="3,3" style="display:none;"/>
+        ${lineas}
+      </svg>
+      <div class="chart-tip" id="rev-tip"></div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Mes</th>${series.map(s => `<th>${s.label}</th>`).join('')}<th>Total</th></tr></thead>
+    <tbody>${meses.map((m, i) => `<tr>
+      <td>${mesCorto(m)}</td>${series.map(s => `<td>${plata(s.vals[i])}</td>`).join('')}
+      <td><strong>${plata(series.reduce((sum, s) => sum + s.vals[i], 0))}</strong></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function wireRevenueHover() {
+  const wrap = $('rev-wrap'), svg = $('rev-svg'), tip = $('rev-tip'), cross = $('rev-cross');
+  if (!wrap || !REV_MODEL) return;
+  const { meses, series, xs, W } = REV_MODEL;
+  const mesCorto = m => new Date(m + '-15').toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+  wrap.addEventListener('mousemove', (ev) => {
+    const box = svg.getBoundingClientRect();
+    const x = (ev.clientX - box.left) * W / box.width; // px → coords del viewBox
+    let i = 0;
+    for (let k = 1; k < xs.length; k++) if (Math.abs(xs[k] - x) < Math.abs(xs[i] - x)) i = k;
+    cross.style.display = '';
+    cross.setAttribute('x1', xs[i]); cross.setAttribute('x2', xs[i]);
+    tip.style.display = 'block';
+    tip.innerHTML = `<div class="tip-mes">${mesCorto(meses[i])}</div>` +
+      series.map(s => `<div class="tip-row"><span class="sw" style="background:${s.color}"></span> ${s.label}: <strong>${plata(s.vals[i])}</strong></div>`).join('');
+    const px = xs[i] * box.width / W;
+    tip.style.left = Math.min(px + 12, box.width - tip.offsetWidth - 8) + 'px';
+    tip.style.top = '10px';
+  });
+  wrap.addEventListener('mouseleave', () => { tip.style.display = 'none'; cross.style.display = 'none'; });
 }
 
 // Sesión previa en esta pestaña
