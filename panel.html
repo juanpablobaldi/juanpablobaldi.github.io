@@ -125,12 +125,12 @@ async function cargar(token) {
       <div class="card-sub">del total de clínicas</div></div>
   </div>
   <table>
-    <thead><tr><th>Plan</th><th>Vigentes</th><th></th><th>Fuente</th><th>Vigentes</th></tr></thead>
+    <thead><tr><th>Plan</th><th>Vigentes</th><th>En trial</th><th></th><th>Fuente</th><th>Vigentes</th></tr></thead>
     <tbody>
-      <tr><td>Free</td><td>${p.free}</td><td></td><td>🍎 Apple</td><td>${f.apple}</td></tr>
-      <tr><td>Profesional</td><td>${p.profesional}</td><td></td><td>🤖 Google</td><td>${f.google}</td></tr>
-      <tr><td>Clínica</td><td>${p.clinica}</td><td></td><td>💳 Directo (MP)</td><td>${f.direct}</td></tr>
-      <tr><td>Clínica Pro</td><td>${p.clinica_pro}</td><td></td><td>🎁 Promo/Referido</td><td>${f.promo}</td></tr>
+      <tr><td>Free</td><td>${p.free}</td><td>—</td><td></td><td>🍎 Apple</td><td>${f.apple}</td></tr>
+      <tr><td>Profesional</td><td>${p.profesional}</td><td>${(d.planes_trial ?? {}).profesional ?? 0}</td><td></td><td>🤖 Google</td><td>${f.google}</td></tr>
+      <tr><td>Clínica</td><td>${p.clinica}</td><td>${(d.planes_trial ?? {}).clinica ?? 0}</td><td></td><td>💳 Directo (MP)</td><td>${f.direct}</td></tr>
+      <tr><td>Clínica Pro</td><td>${p.clinica_pro}</td><td>${(d.planes_trial ?? {}).clinica_pro ?? 0}</td><td></td><td>🎁 Promo/Referido</td><td>${f.promo}</td></tr>
     </tbody>
   </table>
 
