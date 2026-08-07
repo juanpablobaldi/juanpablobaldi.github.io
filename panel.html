@@ -179,6 +179,22 @@ async function cargar(token) {
       <div class="card-sub">a liquidar a consultores</div></div>
   </div>
 
+  <div class="form-card" id="settings-form">
+    <h2>⚙️ Variables del programa</h2>
+    <div class="form-grid">
+      <div class="field"><label for="st-gift">Días de regalo (códigos automáticos)</label>
+        <input id="st-gift" type="number" min="1" max="365" value="${(d.settings ?? {}).clinic_gift_days ?? 30}">
+        <div class="hint">Lo que recibe la clínica referida. Aplica a los códigos autogenerados por la app (existentes y futuros); los creados a mano conservan sus días</div></div>
+      <div class="field"><label for="st-reward">Días de premio al referidor</label>
+        <input id="st-reward" type="number" min="1" max="365" value="${(d.settings ?? {}).clinic_reward_days ?? 30}">
+        <div class="hint">Lo que gana la clínica que refiere cuando su referido hace el primer pago (por cualquier canal)</div></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-sm" onclick="guardarSettings()">Guardar variables</button>
+      <span class="form-msg" id="st-msg"></span>
+    </div>
+  </div>
+
   <div class="form-card" id="ref-form">
     <h2 id="rf-title">➕ Crear código</h2>
     <div class="form-grid">
@@ -195,7 +211,7 @@ async function cargar(token) {
           `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('') || '<option value="">— No hay referidores —</option>'}</select>
         <div class="hint">Se muestra al canjear: «cortesía de …». ¿Falta? Agregalo en «Referidores» (abajo)</div></div>
       <div class="field"><label for="rf-days">Días de regalo</label>
-        <input id="rf-days" type="number" min="1" max="365" value="60"></div>
+        <input id="rf-days" type="number" min="1" max="365" value="${(d.settings ?? {}).clinic_gift_days ?? 30}"></div>
       <div class="field"><label for="rf-plan">Plan de regalo</label>
         <select id="rf-plan">
           <option value="profesional">Profesional</option>
@@ -209,7 +225,7 @@ async function cargar(token) {
         <input id="rf-months" type="number" min="1" max="60" value="6"></div>
       <div class="field rf-clinic" style="display:none;"><label for="rf-org">Clínica referidora</label>
         <select id="rf-org">${(d.orgs ?? []).map(o => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select>
-        <div class="hint">Recibe +30 días al 1er pago del referido</div></div>
+        <div class="hint">Recibe +${(d.settings ?? {}).clinic_reward_days ?? 30} días al 1er pago del referido</div></div>
       <div class="field"><label for="rf-max">Cupo de canjes</label>
         <input id="rf-max" type="number" min="1" placeholder="Sin tope"></div>
       <div class="field"><label for="rf-notes">Notas</label>
@@ -226,7 +242,7 @@ async function cargar(token) {
     <thead><tr><th>Código</th><th>Tipo</th><th>Referidor</th><th>Plan regalo</th><th>Días</th><th>Comisión</th><th>Canjes</th><th>Convertidos</th><th>Estado</th><th>Acciones</th></tr></thead>
     <tbody>${d.codigos.map(c => `<tr>
       <td><strong>${esc(c.code)}</strong></td>
-      <td>${c.kind === 'consultant' ? '👨‍💼 Consultor' : '🏥 Clínica'}</td>
+      <td>${c.kind === 'consultant' ? '👨‍💼 Consultor' : '🏥 Clínica'}${c.auto ? ' <span style="color:#999; font-size:11px;">· auto</span>' : ''}</td>
       <td>${esc(c.display_name)}</td><td>${esc(c.plan_id)}</td><td>${c.trial_days}</td>
       <td>${c.kind === 'consultant' && c.commission_pct != null ? `${c.commission_pct}% × ${c.commission_months ?? 6}m` : '—'}</td>
       <td>${c.canjes}${c.max_redemptions ? ' / ' + c.max_redemptions : ''}</td><td>${c.convertidos}</td>
@@ -350,6 +366,28 @@ async function postAPI(body) {
   return r.json();
 }
 
+// Variables globales del programa: el regalo se propaga en el backend a los
+// códigos autogenerados; los manuales conservan sus días.
+async function guardarSettings() {
+  const msg = $('st-msg');
+  msg.className = 'form-msg'; msg.textContent = 'Guardando…';
+  const r = await postAPI({
+    action: 'update_settings',
+    clinic_gift_days: $('st-gift').value,
+    clinic_reward_days: $('st-reward').value,
+  });
+  if (r.ok) {
+    await cargar(TOKEN);
+    document.getElementById('referidos').scrollIntoView();
+    const msg2 = $('st-msg'); // el re-render recreó el nodo
+    msg2.className = 'form-msg ok';
+    msg2.textContent = `Guardado: regalo ${r.settings.clinic_gift_days} días · premio ${r.settings.clinic_reward_days} días.`;
+  } else {
+    msg.className = 'form-msg err-msg';
+    msg.textContent = r.error ?? 'Error desconocido';
+  }
+}
+
 function refKindChange() {
   const esConsultor = $('rf-kind').value === 'consultant';
   document.querySelectorAll('.rf-consultant').forEach(el => el.style.display = esConsultor ? '' : 'none');
@@ -365,7 +403,7 @@ function refModoCrear() {
   $('rf-code').value = ''; $('rf-code').disabled = false;
   $('rf-kind').disabled = false;
   if ($('rf-ref').options.length) $('rf-ref').selectedIndex = 0;
-  $('rf-days').value = 60; $('rf-plan').value = 'clinica';
+  $('rf-days').value = DATOS?.settings?.clinic_gift_days ?? 30; $('rf-plan').value = 'clinica';
   $('rf-pct').value = 20; $('rf-months').value = 6;
   $('rf-max').value = ''; $('rf-notes').value = '';
   refKindChange();
@@ -382,7 +420,7 @@ function editarCodigo(code) {
   $('rf-code').value = c.code; $('rf-code').disabled = true;
   $('rf-kind').value = c.kind; $('rf-kind').disabled = true; // el tipo no se cambia
   if (c.referrer_id) $('rf-ref').value = c.referrer_id;
-  $('rf-days').value = c.trial_days ?? 60;
+  $('rf-days').value = c.trial_days ?? 30;
   $('rf-plan').value = c.plan_id ?? 'clinica';
   $('rf-pct').value = c.commission_pct ?? 20;
   $('rf-months').value = c.commission_months ?? 6;
