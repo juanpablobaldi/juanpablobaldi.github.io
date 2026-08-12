@@ -58,7 +58,8 @@
 
   /* ── Hero ─────────────────────────────────────────── */
   header{overflow:hidden}
-  .hero{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:56px;align-items:center;padding:72px 0 64px}
+  /* padding vertical solamente: el shorthand pisaba el padding lateral de .wrap */
+  .hero{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:56px;align-items:center;padding-top:72px;padding-bottom:64px}
   .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo);font-weight:500;margin-bottom:18px;display:flex;align-items:center;gap:8px}
   .eyebrow::before{content:"";width:22px;height:1px;background:var(--indigo)}
   h1{font-family:var(--disp);font-size:clamp(38px,4.6vw,58px);line-height:1.04;letter-spacing:-.025em;font-weight:600}
@@ -112,7 +113,7 @@
 
   /* franja instrumentos */
   .strip{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);background:#fff}
-  .strip-in{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;padding:18px 0;
+  .strip-in{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;padding-top:18px;padding-bottom:18px;
             font-family:var(--mono);font-size:12.5px;color:#4b4e57}
   .strip-in b{color:var(--tinta);font-weight:600}
 
@@ -196,13 +197,15 @@
 
   /* ── Responsive ───────────────────────────────────── */
   @media (max-width:960px){
-    .hero{grid-template-columns:1fr;gap:40px;padding:52px 0 48px}
+    .hero{grid-template-columns:1fr;gap:40px;padding-top:52px;padding-bottom:48px}
     .steps{grid-template-columns:1fr}
     .feats{grid-template-columns:1fr 1fr}
     .priv{grid-template-columns:1fr;padding:44px 30px}
   }
   @media (max-width:720px){
     .feats{grid-template-columns:1fr}
+    /* la tira de stats: un punto por línea */
+    .strip-in{flex-direction:column;gap:10px}
     .cmp{height:430px}
     /* en mobile el comparador pasa a apilado: antes arriba, después abajo */
     .cmp .divider{left:0;right:0;top:50%;bottom:auto;width:auto;height:2px}
@@ -416,7 +419,6 @@
     <span>© 2026 Antes &amp; Después</span>
     <a href="https://antesydespues.app/antesydespues-legal/privacy.html">Privacidad</a>
     <a href="https://antesydespues.app/antesydespues-legal/soporte.html">Soporte</a>
-    <span class="right">HECHO EN EL CONSULTORIO</span>
   </div>
 </footer>
 
