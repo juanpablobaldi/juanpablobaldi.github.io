@@ -115,11 +115,19 @@ function salir() {
   location.reload();
 }
 
+// El access token de Supabase vence a la hora y el panel no guarda refresh
+// token: ante un 401 en cualquier request, de vuelta al login con aviso.
+function sesionVencida() {
+  sessionStorage.removeItem('panel_token');
+  sessionStorage.setItem('panel_expired', '1');
+  location.reload();
+}
+
 let TOKEN = null, DATOS = null, RF_EDIT = null, RR_EDIT = null; // *_EDIT: en edición (null = modo crear)
 
 async function cargar(token) {
   const r = await fetch(API, { headers: { 'Authorization': 'Bearer ' + token } });
-  if (r.status === 401) { sessionStorage.removeItem('panel_token'); location.reload(); return; }
+  if (r.status === 401) { sesionVencida(); return; }
   if (r.status === 403) { $('login-err').textContent = 'Acceso restringido al administrador.'; return; }
   const d = await r.json();
   TOKEN = token; DATOS = d; RF_EDIT = null; RR_EDIT = null;
@@ -363,6 +371,7 @@ async function postAPI(body) {
     headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+  if (r.status === 401) { sesionVencida(); return new Promise(() => {}); } // la página recarga; nadie consume esta promesa
   return r.json();
 }
 
@@ -628,6 +637,10 @@ function wireRevenueHover() {
 }
 
 // Sesión previa en esta pestaña
+if (sessionStorage.getItem('panel_expired')) {
+  sessionStorage.removeItem('panel_expired');
+  $('login-err').textContent = 'La sesión venció. Iniciá sesión de nuevo.';
+}
 const saved = sessionStorage.getItem('panel_token');
 if (saved) cargar(saved);
 document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
