@@ -90,7 +90,12 @@ const API = SUPABASE_URL + '/functions/v1/dashboard-referrals';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const fecha = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
+// Fechas sin hora (YYYY-MM-DD, ej. paid_at) al mediodía local: como UTC retroceden un día en AR
+const fecha = (d) => {
+  if (!d) return '—';
+  const dt = /^\d{4}-\d{2}-\d{2}$/.test(String(d)) ? new Date(d + 'T12:00:00') : new Date(d);
+  return dt.toLocaleDateString('es-AR');
+};
 const fechaHora = (d) => new Date(d).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
 const plata = (n) => '$' + Math.round(n).toLocaleString('es-AR');
 

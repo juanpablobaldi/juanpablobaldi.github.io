@@ -180,7 +180,12 @@
 const API = 'https://qjngfuvnktpbyeodspjo.supabase.co/functions/v1/affiliate-portal';
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const fecha = (d) => d ? new Date(d).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+// Fechas sin hora (YYYY-MM-DD) al mediodía local: parseadas como UTC retroceden un día en AR
+const fecha = (d) => {
+  if (!d) return '—';
+  const dt = /^\d{4}-\d{2}-\d{2}$/.test(String(d)) ? new Date(d + 'T12:00:00') : new Date(d);
+  return dt.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+};
 const plata = (n) => '$' + Math.round(Number(n)).toLocaleString('es-AR');
 const PLAN_NOMBRE = { profesional: 'Profesional', clinica: 'Clínica', clinica_pro: 'Clínica Pro' };
 
