@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Portal de afiliados — Antes &amp; Después</title>
+<link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --hueso:#FAFAF8; --tinta:#101014; --indigo:#6366F1; --indigo-tinta:#34367A;
+    --verde:#16A34A; --rojo:#EF4444; --ambar:#D97706; --niebla:#8A8F98; --linea:#E7E6E1;
+    --radius:18px;
+    --disp:"Bricolage Grotesque",Georgia,serif;
+    --body:"Instrument Sans",-apple-system,system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--body);color:var(--tinta);background:var(--hueso);-webkit-font-smoothing:antialiased;line-height:1.55}
+  a{color:inherit}
+  :focus-visible{outline:2px solid var(--indigo);outline-offset:3px;border-radius:4px}
+  .wrap{max-width:1020px;margin:0 auto;padding:0 24px}
+  .mono{font-family:var(--mono)}
+
+  nav{position:sticky;top:0;z-index:50;background:rgba(250,250,248,.86);backdrop-filter:blur(12px);border-bottom:1px solid var(--linea)}
+  .nav-in{display:flex;align-items:center;gap:12px;height:64px}
+  .mark{display:flex;align-items:center;gap:10px;font-weight:600;text-decoration:none;font-size:15.5px;letter-spacing:-.01em}
+  .mark img{width:28px;height:28px;border-radius:7px}
+  .mark em{font-style:normal;color:var(--niebla)}
+  .nav-right{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:14px}
+  .linkbtn{background:none;border:none;color:var(--niebla);cursor:pointer;font-size:13.5px;font-family:var(--body)}
+  .linkbtn:hover{color:var(--tinta)}
+
+  /* ── Login ─────────────────────────────────── */
+  .login-stage{min-height:calc(100vh - 64px);display:flex;align-items:center;justify-content:center;padding:40px 24px}
+  .login-card{background:#fff;border:1px solid var(--linea);border-radius:var(--radius);
+              box-shadow:0 24px 60px -30px rgba(16,16,20,.25);padding:36px;width:100%;max-width:420px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo);font-weight:500;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .eyebrow::before{content:"";width:22px;height:1px;background:var(--indigo)}
+  .login-card h1{font-family:var(--disp);font-size:26px;line-height:1.1;letter-spacing:-.02em;font-weight:600;margin-bottom:10px}
+  .login-card p.sub{color:#4b4e57;font-size:14.5px;margin-bottom:22px}
+  label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--niebla);margin-bottom:6px}
+  input{width:100%;padding:13px 14px;border:1px solid var(--linea);border-radius:10px;font-size:15px;font-family:var(--body);background:#fff;margin-bottom:14px}
+  input:focus{outline:2px solid var(--indigo);outline-offset:0;border-color:transparent}
+  #f-code{font-family:var(--mono);font-size:22px;letter-spacing:10px;text-align:center}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--tinta);color:#fff;border-radius:999px;
+       padding:13px 20px;font-size:14.5px;font-weight:600;text-decoration:none;border:1px solid var(--tinta);cursor:pointer;
+       width:100%;font-family:var(--body);transition:transform .15s ease, background .15s ease}
+  .btn:hover{background:#26262e;transform:translateY(-1px)}
+  .btn[disabled]{opacity:.55;cursor:default;transform:none}
+  .err{color:var(--rojo);font-size:13.5px;min-height:18px;margin-bottom:10px}
+  .login-foot{margin-top:18px;font-size:12.5px;color:var(--niebla)}
+  .login-foot a{color:var(--indigo);text-decoration:none}
+
+  /* ── Panel ─────────────────────────────────── */
+  .head{padding:44px 0 8px}
+  .head h1{font-family:var(--disp);font-size:clamp(28px,4vw,40px);letter-spacing:-.02em;line-height:1.05;font-weight:600}
+  .head p{color:#4b4e57;margin-top:8px;font-size:15px;max-width:60ch}
+  h2{font-family:var(--disp);font-size:21px;letter-spacing:-.015em;font-weight:600;margin:38px 0 6px;scroll-margin-top:80px}
+  .sec-sub{color:var(--niebla);font-size:13.5px;margin-bottom:14px}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:22px 0 6px}
+  .stat{background:#fff;border:1px solid var(--linea);border-radius:var(--radius);padding:18px}
+  .stat .k{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--niebla)}
+  .stat .v{font-family:var(--disp);font-size:30px;font-weight:600;letter-spacing:-.02em;margin-top:6px}
+  .stat .v.verde{color:var(--verde)} .stat .v.indigo{color:var(--indigo-tinta)}
+  .stat .s{font-size:12px;color:var(--niebla);margin-top:2px}
+  .stat.saldo{background:var(--tinta);border-color:var(--tinta);color:#fff}
+  .stat.saldo .k{color:#b8bac2}.stat.saldo .s{color:#8a8f98}
+
+  .codes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+  .code-card{background:#fff;border:1px solid var(--linea);border-radius:var(--radius);padding:18px}
+  .code-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .code-big{font-family:var(--mono);font-size:24px;font-weight:600;letter-spacing:.06em}
+  .chip{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;padding:4px 9px;border-radius:999px;white-space:nowrap}
+  .chip.on{background:#DCFCE7;color:#15803D} .chip.off{background:#FEE2E2;color:#B91C1C}
+  .chip.trial{background:#EEF2FF;color:var(--indigo-tinta)} .chip.warn{background:#FEF3C7;color:#92400E}
+  .chip.gris{background:#F1F0EC;color:var(--niebla)}
+  .code-meta{font-size:13px;color:#4b4e57;margin-top:8px;line-height:1.7}
+  .code-meta b{color:var(--tinta)}
+  .code-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .mini{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--linea);background:#fff;border-radius:999px;
+        padding:7px 14px;font-size:13px;font-weight:500;font-family:var(--body);cursor:pointer;text-decoration:none;color:var(--tinta)}
+  .mini:hover{border-color:var(--tinta)}
+
+  .tbl-card{background:#fff;border:1px solid var(--linea);border-radius:var(--radius);overflow:hidden;margin:6px 0 8px}
+  .tbl-scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--linea);font-size:13.5px;white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--niebla);font-weight:500;background:#FCFCFA}
+  td.num{font-family:var(--mono);font-size:13px}
+  .empty{color:var(--niebla);text-align:center;padding:26px 16px;font-size:13.5px}
+  .note{font-size:12.5px;color:var(--niebla);margin:8px 2px 0}
+
+  .bank{background:#fff;border:1px solid var(--linea);border-radius:var(--radius);padding:18px;font-size:13.5px;color:#4b4e57;line-height:1.8}
+  .bank b{color:var(--tinta)}
+
+  footer{margin-top:56px;border-top:1px solid var(--linea);padding:26px 0 40px;font-size:13px;color:var(--niebla)}
+  footer a{color:var(--indigo);text-decoration:none}
+
+  .skel{color:var(--niebla);padding:60px 0;text-align:center}
+  @media (max-width:560px){ th,td{padding:10px 12px} .head{padding-top:32px} }
+</style>
+</head>
+<body>
+
+<nav><div class="wrap nav-in">
+  <a class="mark" href="/"><img src="icon.png" alt=""><span>Antes <em>&amp;</em> Después</span></a>
+  <div class="nav-right">
+    <span class="mono" style="font-size:11.5px;letter-spacing:.12em;color:var(--niebla);text-transform:uppercase;">Portal de afiliados</span>
+    <button class="linkbtn" id="btn-salir" style="display:none;" onclick="salir()">Cerrar sesión</button>
+  </div>
+</div></nav>
+
+<!-- ── Login ── -->
+<div id="login" class="login-stage">
+  <div class="login-card">
+    <div class="eyebrow">Afiliados</div>
+    <h1>Entrá a tu panel</h1>
+    <p class="sub" id="login-sub">Te mandamos un código a tu email — sin contraseñas.</p>
+    <div class="err" id="login-err"></div>
+    <div id="step-email">
+      <label for="f-email">Tu email de afiliado</label>
+      <input type="email" id="f-email" placeholder="vos@ejemplo.com" autocomplete="email">
+      <button class="btn" id="btn-otp" onclick="pedirCodigo()">Mandarme el código</button>
+    </div>
+    <div id="step-code" style="display:none;">
+      <label for="f-code">Código de 6 dígitos</label>
+      <input inputmode="numeric" autocomplete="one-time-code" maxlength="6" id="f-code" placeholder="••••••">
+      <button class="btn" id="btn-verify" onclick="verificarCodigo()">Entrar</button>
+      <div class="login-foot"><button class="linkbtn" onclick="volverEmail()">‹ Usar otro email</button></div>
+    </div>
+    <div class="login-foot">¿Todavía no sos afiliado o cambió tu email?
+      <a href="mailto:hola@antesydespues.app">Escribinos</a> y lo resolvemos.</div>
+  </div>
+</div>
+
+<!-- ── Panel ── -->
+<div id="panel" class="wrap" style="display:none;">
+  <div class="head">
+    <div class="eyebrow" style="margin-top:6px;">Tu programa de referidos</div>
+    <h1 id="hola">Hola 👋</h1>
+    <p>Cada clínica que llega con tu código recibe días de regalo, y vos cobrás tu comisión
+       sobre los pagos que hagan por el canal directo. Acá ves todo: tus códigos, tus referidos
+       y el estado de tus cobros.</p>
+  </div>
+
+  <div class="cards" id="stats"></div>
+  <p class="note" id="stats-note"></p>
+
+  <h2>Tus códigos</h2>
+  <p class="sec-sub">Compartilos con clínicas y profesionales. El regalo se aplica cuando lo canjean en la app.</p>
+  <div class="codes" id="codes"></div>
+
+  <h2>Tus referidos</h2>
+  <p class="sec-sub">Cada clínica que canjeó uno de tus códigos y en qué estado está.</p>
+  <div class="tbl-card"><div class="tbl-scroll"><table id="tbl-refs"></table></div></div>
+
+  <h2>Comisiones generadas</h2>
+  <p class="sec-sub">Un renglón por cada cobro real a un referido tuyo dentro de tu período de comisión.</p>
+  <div class="tbl-card"><div class="tbl-scroll"><table id="tbl-comms"></table></div></div>
+  <p class="note">Las comisiones se generan sobre los cobros del canal directo (Mercado Pago). Las suscripciones por App Store / Google Play las cobra la tienda y no generan comisión.</p>
+
+  <h2>Tus cobros</h2>
+  <p class="sec-sub">Los pagos de comisiones que ya te hicimos, y lo que está pendiente de liquidar.</p>
+  <div class="tbl-card"><div class="tbl-scroll"><table id="tbl-pagos"></table></div></div>
+  <div class="bank" id="bank" style="margin-top:12px;"></div>
+
+  <footer>
+    ¿Dudas con una liquidación o querés actualizar tus datos de cobro?
+    <a href="mailto:hola@antesydespues.app">hola@antesydespues.app</a> · Antes &amp; Después
+  </footer>
+</div>
+
+<script>
+const API = 'https://qjngfuvnktpbyeodspjo.supabase.co/functions/v1/affiliate-portal';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const fecha = (d) => d ? new Date(d).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+const plata = (n) => '$' + Math.round(Number(n)).toLocaleString('es-AR');
+const PLAN_NOMBRE = { profesional: 'Profesional', clinica: 'Clínica', clinica_pro: 'Clínica Pro' };
+
+let EMAIL = '';
+
+async function pedirCodigo() {
+  const email = $('f-email').value.trim();
+  $('login-err').textContent = '';
+  if (!email) { $('login-err').textContent = 'Escribí tu email.'; return; }
+  const btn = $('btn-otp'); btn.disabled = true; btn.textContent = 'Enviando…';
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'request_otp', email }) });
+    const d = await r.json();
+    if (!d.ok) { $('login-err').textContent = d.error ?? 'No se pudo enviar el código.'; return; }
+    EMAIL = email;
+    $('step-email').style.display = 'none';
+    $('step-code').style.display = '';
+    $('login-sub').textContent = `Te mandamos un código a ${email}. Revisá también spam.`;
+    $('f-code').focus();
+  } catch { $('login-err').textContent = 'Error de conexión. Probá de nuevo.'; }
+  finally { btn.disabled = false; btn.textContent = 'Mandarme el código'; }
+}
+
+async function verificarCodigo() {
+  $('login-err').textContent = '';
+  const code = $('f-code').value.trim();
+  if (code.length !== 6) { $('login-err').textContent = 'El código tiene 6 dígitos.'; return; }
+  const btn = $('btn-verify'); btn.disabled = true; btn.textContent = 'Verificando…';
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'verify_otp', email: EMAIL, code }) });
+    const d = await r.json();
+    if (!d.ok) { $('login-err').textContent = d.error ?? 'Código incorrecto.'; return; }
+    localStorage.setItem('afiliados_token', d.token);
+    cargar(d.token);
+  } catch { $('login-err').textContent = 'Error de conexión. Probá de nuevo.'; }
+  finally { btn.disabled = false; btn.textContent = 'Entrar'; }
+}
+
+function volverEmail() {
+  $('step-code').style.display = 'none';
+  $('step-email').style.display = '';
+  $('login-sub').textContent = 'Te mandamos un código a tu email — sin contraseñas.';
+  $('login-err').textContent = '';
+}
+
+function salir() { localStorage.removeItem('afiliados_token'); location.reload(); }
+
+function copiar(code, btn) {
+  navigator.clipboard.writeText(code).then(() => {
+    const t = btn.textContent; btn.textContent = '✓ Copiado';
+    setTimeout(() => { btn.textContent = t; }, 1600);
+  });
+}
+
+const ESTADOS = {
+  pagando:        { chip: 'on',    txt: 'Activo · pagando' },
+  en_prueba:      { chip: 'trial', txt: 'En prueba' },
+  pagado_antes:   { chip: 'warn',  txt: 'Pagó · hoy inactivo' },
+  prueba_vencida: { chip: 'gris',  txt: 'Prueba vencida' },
+};
+
+async function cargar(token) {
+  try {
+    const r = await fetch(API, { headers: { 'Authorization': 'Bearer ' + token } });
+    if (r.status === 401) { localStorage.removeItem('afiliados_token'); location.reload(); return; }
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    render(d);
+  } catch (e) {
+    $('login-err').textContent = 'No se pudieron cargar tus datos. Probá de nuevo en un rato.';
+  }
+}
+
+function render(d) {
+  $('login').style.display = 'none';
+  $('panel').style.display = 'block';
+  $('btn-salir').style.display = '';
+  $('hola').textContent = `Hola, ${d.afiliado.name.split(' ')[0]} 👋`;
+
+  const s = d.resumen;
+  $('stats').innerHTML = `
+    <div class="stat"><div class="k">Referidos</div><div class="v">${s.referidos}</div>
+      <div class="s">clínicas con tu código</div></div>
+    <div class="stat"><div class="k">Convertidos</div><div class="v verde">${s.convertidos}</div>
+      <div class="s">ya hicieron un pago</div></div>
+    <div class="stat"><div class="k">Comisión acumulada</div><div class="v indigo">${plata(s.comision_acumulada)}</div>
+      <div class="s">histórico devengado</div></div>
+    <div class="stat"><div class="k">Ya cobraste</div><div class="v">${plata(s.pagado)}</div>
+      <div class="s">${(d.pagos ?? []).length} pago${(d.pagos ?? []).length === 1 ? '' : 's'}</div></div>
+    <div class="stat saldo"><div class="k">Saldo a cobrar</div><div class="v">${plata(s.saldo)}</div>
+      <div class="s">pendiente de liquidar</div></div>`;
+
+  // Códigos
+  $('codes').innerHTML = (d.codigos ?? []).map(c => {
+    const msj = encodeURIComponent(
+      `Te recomiendo Antes y Después, la app de fotografía clínica para estética. ` +
+      `Con mi código ${c.code} tenés ${c.trial_days} días del plan ${PLAN_NOMBRE[c.plan_id] ?? c.plan_id} de regalo. ` +
+      `Descargala en https://antesydespues.app y canjealo en Cuenta → Código de referido.`);
+    return `
+    <div class="code-card">
+      <div class="code-row">
+        <span class="code-big">${esc(c.code)}</span>
+        <span class="chip ${c.active ? 'on' : 'off'}">${c.active ? 'ACTIVO' : 'INACTIVO'}</span>
+      </div>
+      <div class="code-meta">
+        Regalo al que canjea: <b>${c.trial_days} días</b> de plan <b>${esc(PLAN_NOMBRE[c.plan_id] ?? c.plan_id)}</b><br>
+        ${c.kind === 'consultant'
+          ? `Tu comisión: <b>${c.commission_pct}%</b> de cada cobro directo durante <b>${c.commission_months ?? 6} meses</b>`
+          : 'Código de recomendación entre clínicas'}
+        ${c.max_redemptions ? `<br>Cupo: ${c.max_redemptions} canjes` : ''}
+      </div>
+      <div class="code-actions">
+        <button class="mini" onclick="copiar('${esc(c.code)}', this)">⧉ Copiar código</button>
+        <a class="mini" href="https://wa.me/?text=${msj}" target="_blank" rel="noopener">Compartir por WhatsApp</a>
+      </div>
+    </div>`;
+  }).join('') || '<div class="tbl-card"><div class="empty">Todavía no tenés códigos asignados. Escribinos y te generamos el tuyo.</div></div>';
+
+  // Referidos
+  $('tbl-refs').innerHTML = `
+    <thead><tr><th>Clínica</th><th>Código</th><th>Canjeó</th><th>1er pago</th><th>Estado</th><th>Comisionás hasta</th></tr></thead>
+    <tbody>${(d.referidos ?? []).map(r => {
+      const e = ESTADOS[r.estado] ?? ESTADOS.prueba_vencida;
+      return `<tr>
+        <td><strong>${esc(r.clinica)}</strong></td>
+        <td class="num">${esc(r.code)}</td>
+        <td>${fecha(r.redeemed_at)}</td>
+        <td>${fecha(r.first_payment_at)}</td>
+        <td><span class="chip ${e.chip}">${e.txt}</span></td>
+        <td>${r.first_payment_at ? fecha(r.comisiona_hasta) : '—'}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" class="empty">Todavía nadie canjeó tus códigos. ¡Compartilos!</td></tr>'}</tbody>`;
+
+  // Comisiones por cobro
+  $('tbl-comms').innerHTML = `
+    <thead><tr><th>Fecha</th><th>Clínica</th><th>Plan</th><th>Cobro</th><th>Tu %</th><th>Tu comisión</th></tr></thead>
+    <tbody>${(d.comisiones ?? []).map(c => `<tr>
+      <td>${fecha(c.created_at)}</td>
+      <td><strong>${esc(c.clinica)}</strong></td>
+      <td>${esc(PLAN_NOMBRE[c.plan_id] ?? c.plan_id)}</td>
+      <td class="num">${plata(c.precio)}</td>
+      <td class="num">${c.pct}%</td>
+      <td class="num"><strong>${plata(c.comision)}</strong></td>
+    </tr>`).join('') || '<tr><td colspan="6" class="empty">Cuando un referido tuyo pague por el canal directo, tu comisión aparece acá.</td></tr>'}</tbody>`;
+
+  // Pagos recibidos
+  $('tbl-pagos').innerHTML = `
+    <thead><tr><th>Fecha</th><th>Monto</th><th>Medio</th><th>Detalle</th></tr></thead>
+    <tbody>${(d.pagos ?? []).map(p => `<tr>
+      <td>${fecha(p.paid_at)}</td>
+      <td class="num"><strong>${plata(p.amount)}</strong></td>
+      <td>${p.method === 'transferencia' ? '🏦 Transferencia' : p.method === 'efectivo' ? '💵 Efectivo' : '—'}</td>
+      <td>${esc(p.notes ?? '') || '—'}</td>
+    </tr>`).join('') || '<tr><td colspan="4" class="empty">Todavía no registramos pagos. Tu saldo pendiente figura arriba.</td></tr>'}</tbody>`;
+
+  // Datos de cobro en archivo
+  const a = d.afiliado;
+  $('bank').innerHTML = a.payout_method
+    ? `Te pagamos por <b>${a.payout_method === 'transferencia' ? 'transferencia' : 'efectivo'}</b>${
+        a.payout_method === 'transferencia'
+          ? ` a <b>${esc(a.bank_holder ?? '—')}</b> · ${esc(a.bank_name ?? '')} · <span class="mono">${esc(a.bank_cbu ?? '')}</span>`
+          : ''}.
+       Si estos datos cambiaron, <a href="mailto:hola@antesydespues.app" style="color:var(--indigo);">avisanos</a>.`
+    : `Todavía no definimos tu medio de cobro. <a href="mailto:hola@antesydespues.app" style="color:var(--indigo);">Escribinos</a> con tu CBU/CVU o alias y lo dejamos configurado.`;
+}
+
+const saved = localStorage.getItem('afiliados_token');
+if (saved) cargar(saved);
+$('f-email').addEventListener('keydown', e => { if (e.key === 'Enter') pedirCodigo(); });
+$('f-code').addEventListener('keydown', e => { if (e.key === 'Enter') verificarCodigo(); });
+</script>
+</body>
+</html>

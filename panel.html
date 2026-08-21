@@ -268,6 +268,9 @@ async function cargar(token) {
       <div class="field"><label for="rr-name">Nombre</label>
         <input id="rr-name" placeholder="Vanina La Sala">
         <div class="hint">Identidad única: sus códigos y liquidaciones se agrupan por este nombre</div></div>
+      <div class="field"><label for="rr-email">Email (portal de afiliados)</label>
+        <input id="rr-email" type="email" placeholder="vanina@ejemplo.com">
+        <div class="hint">Con este email entra a antesydespues.app/afiliados.html (código por mail, sin contraseña)</div></div>
       <div class="field"><label for="rr-payout">Cobra comisión por</label>
         <select id="rr-payout" onchange="rrPayoutChange()">
           <option value="">— Sin definir —</option>
@@ -292,9 +295,10 @@ async function cargar(token) {
     </div>
   </div>
   <table>
-    <thead><tr><th>Referidor</th><th>Códigos</th><th>Cobro</th><th>Datos bancarios</th><th>Notas</th><th>Acciones</th></tr></thead>
+    <thead><tr><th>Referidor</th><th>Email portal</th><th>Códigos</th><th>Cobro</th><th>Datos bancarios</th><th>Notas</th><th>Acciones</th></tr></thead>
     <tbody>${(d.referidores ?? []).map(r => `<tr>
       <td><strong>${esc(r.name)}</strong></td>
+      <td>${r.email ? `${esc(r.email)}${r.portal_last_login ? `<div style="font-size:11px;color:#999;">entró ${fecha(r.portal_last_login)}</div>` : ''}` : '<span class="warn">sin email</span>'}</td>
       <td>${(d.codigos ?? []).filter(c => c.referrer_id === r.id).map(c => esc(c.code)).join(', ') || '—'}</td>
       <td>${r.payout_method === 'transferencia' ? '🏦 Transferencia' : r.payout_method === 'efectivo' ? '💵 Efectivo' : '—'}</td>
       <td>${r.payout_method === 'transferencia'
@@ -302,7 +306,7 @@ async function cargar(token) {
           : '—'}</td>
       <td>${esc(r.notes ?? '') || '—'}</td>
       <td><button class="rowbtn" onclick="editarReferidor('${esc(r.id)}')">✏️ Editar</button></td>
-    </tr>`).join('') || '<tr><td colspan="6" class="empty">Sin referidores — creá el primero acá arriba</td></tr>'}</tbody>
+    </tr>`).join('') || '<tr><td colspan="7" class="empty">Sin referidores — creá el primero acá arriba</td></tr>'}</tbody>
   </table>
 
   <h1>Canjes</h1>
@@ -328,6 +332,55 @@ async function cargar(token) {
           ? `🏦 ${[c.bank_cbu, c.bank_holder].filter(Boolean).map(esc).join(' · ')}`
           : c.payout_method === 'efectivo' ? '💵 Efectivo' : '—'}</td>
     </tr>`).join('') || '<tr><td colspan="5" class="empty">Sin comisiones este período</td></tr>'}</tbody>
+  </table>
+
+  <h1>💸 Pagos a afiliados</h1>
+  <table>
+    <thead><tr><th>Afiliado</th><th>Comisión acumulada</th><th>Pagado</th><th>Saldo pendiente</th></tr></thead>
+    <tbody>${(d.referidores ?? []).map(r => {
+      const acum = Number((d.comisiones_acumuladas ?? []).find(t => t.referrer_id === r.id)?.total ?? 0);
+      const pag = (d.pagos_afiliados ?? []).filter(p => p.referrer_id === r.id).reduce((s, p) => s + Number(p.amount), 0);
+      if (!acum && !pag) return '';
+      const saldo = acum - pag;
+      return `<tr><td><strong>${esc(r.name)}</strong></td><td>${plata(acum)}</td><td>${plata(pag)}</td>
+        <td class="${saldo > 0 ? 'warn' : 'ok'}"><strong>${plata(saldo)}</strong></td></tr>`;
+    }).join('') || '<tr><td colspan="4" class="empty">Todavía no hay comisiones devengadas ni pagos</td></tr>'}</tbody>
+  </table>
+
+  <div class="form-card" id="po-form">
+    <h2>➕ Registrar pago</h2>
+    <div class="form-grid">
+      <div class="field"><label for="po-ref">Afiliado</label>
+        <select id="po-ref">${(d.referidores ?? []).filter(r => r.active !== false).map(r =>
+          `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('') || '<option value="">— No hay afiliados —</option>'}</select></div>
+      <div class="field"><label for="po-amount">Monto (ARS)</label>
+        <input id="po-amount" type="number" min="1" placeholder="54000"></div>
+      <div class="field"><label for="po-date">Fecha de pago</label>
+        <input id="po-date" type="date"></div>
+      <div class="field"><label for="po-method">Medio</label>
+        <select id="po-method">
+          <option value="">— Sin definir —</option>
+          <option value="transferencia">🏦 Transferencia</option>
+          <option value="efectivo">💵 Efectivo</option>
+        </select></div>
+      <div class="field"><label for="po-notes">Notas</label>
+        <input id="po-notes" placeholder="Liquidación julio · nro de operación"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-sm" onclick="registrarPago()">Registrar pago</button>
+      <span class="form-msg" id="po-msg"></span>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Fecha</th><th>Afiliado</th><th>Monto</th><th>Medio</th><th>Notas</th><th></th></tr></thead>
+    <tbody>${(d.pagos_afiliados ?? []).map(p => `<tr>
+      <td>${fecha(p.paid_at)}</td>
+      <td>${esc((d.referidores ?? []).find(r => r.id === p.referrer_id)?.name)}</td>
+      <td><strong>${plata(Number(p.amount))}</strong></td>
+      <td>${p.method === 'transferencia' ? '🏦 Transferencia' : p.method === 'efectivo' ? '💵 Efectivo' : '—'}</td>
+      <td>${esc(p.notes ?? '') || '—'}</td>
+      <td><button class="rowbtn danger" onclick="borrarPago('${esc(p.id)}')">🗑 Borrar</button></td>
+    </tr>`).join('') || '<tr><td colspan="6" class="empty">Sin pagos registrados</td></tr>'}</tbody>
   </table>
 
   ${d.premios_pendientes.length ? `
@@ -479,6 +532,37 @@ async function toggleCodigo(code, activar) {
   else alert(r.error ?? 'Error al cambiar el estado');
 }
 
+// ── Pagos a afiliados ────────────────────────────────────────────────────────
+async function registrarPago() {
+  const msg = $('po-msg');
+  msg.className = 'form-msg'; msg.textContent = 'Guardando…';
+  const r = await postAPI({
+    action: 'create_payout',
+    referrer_id: $('po-ref').value,
+    amount: $('po-amount').value,
+    paid_at: $('po-date').value,
+    method: $('po-method').value,
+    notes: $('po-notes').value,
+  });
+  if (r.ok) {
+    await cargar(TOKEN);
+    document.getElementById('po-form').scrollIntoView({ block: 'center' });
+    const msg2 = $('po-msg');
+    msg2.className = 'form-msg ok';
+    msg2.textContent = 'Pago registrado. El afiliado ya lo ve en su portal.';
+  } else {
+    msg.className = 'form-msg err-msg';
+    msg.textContent = r.error ?? 'Error desconocido';
+  }
+}
+
+async function borrarPago(id) {
+  if (!confirm('¿Borrar este pago? El saldo pendiente del afiliado vuelve a subir.')) return;
+  const r = await postAPI({ action: 'delete_payout', id });
+  if (r.ok) { await cargar(TOKEN); document.getElementById('po-form').scrollIntoView({ block: 'center' }); }
+  else alert(r.error ?? 'Error al borrar el pago');
+}
+
 // ── Gestión de referidores ───────────────────────────────────────────────────
 function rrPayoutChange() {
   const esTransfer = $('rr-payout').value === 'transferencia';
@@ -491,7 +575,7 @@ function rrModoCrear() {
   $('rr-submit').textContent = 'Agregar referidor';
   $('rr-cancel').style.display = 'none';
   $('rr-msg').textContent = '';
-  $('rr-name').value = ''; $('rr-payout').value = '';
+  $('rr-name').value = ''; $('rr-email').value = ''; $('rr-payout').value = '';
   $('rr-holder').value = ''; $('rr-bank').value = ''; $('rr-cbu').value = ''; $('rr-cuit').value = '';
   $('rr-notes').value = '';
   rrPayoutChange();
@@ -506,6 +590,7 @@ function editarReferidor(id) {
   $('rr-cancel').style.display = '';
   $('rr-msg').textContent = '';
   $('rr-name').value = r.name ?? '';
+  $('rr-email').value = r.email ?? '';
   $('rr-payout').value = r.payout_method ?? '';
   $('rr-holder').value = r.bank_holder ?? '';
   $('rr-bank').value = r.bank_name ?? '';
@@ -523,6 +608,7 @@ async function guardarReferidor() {
     action: RR_EDIT ? 'update_referrer' : 'create_referrer',
     ...(RR_EDIT ? { id: RR_EDIT } : {}),
     name: $('rr-name').value.trim(),
+    email: $('rr-email').value.trim(),
     payout_method: $('rr-payout').value,
     bank_holder: $('rr-holder').value,
     bank_name: $('rr-bank').value,
