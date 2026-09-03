@@ -30,7 +30,11 @@
   .mark{display:flex;align-items:center;gap:10px;font-weight:600;text-decoration:none;font-size:15.5px;letter-spacing:-.01em}
   .mark img{width:28px;height:28px;border-radius:7px}
   .mark em{font-style:normal;color:var(--niebla)}
+  .nav-in{position:relative}
+  .nav-title{position:absolute;left:50%;transform:translateX(-50%);font-size:11.5px;letter-spacing:.12em;color:var(--niebla);text-transform:uppercase;white-space:nowrap}
   .nav-right{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:14px}
+  .nav-user{font-size:13.5px;font-weight:500;color:var(--tinta);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+  @media (max-width:640px){ .nav-title{display:none} .nav-user{max-width:120px} }
   .linkbtn{background:none;border:none;color:var(--niebla);cursor:pointer;font-size:13.5px;font-family:var(--body)}
   .linkbtn:hover{color:var(--tinta)}
 
@@ -97,6 +101,15 @@
   .note{font-size:12.5px;color:var(--niebla);margin:8px 2px 0}
 
   .bank{background:#fff;border:1px solid var(--linea);border-radius:var(--radius);padding:18px;font-size:13.5px;color:#4b4e57;line-height:1.8}
+
+  /* ── Simulador ─────────────────────────────── */
+  .sim-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:14px 0 12px}
+  .sim-field{display:flex;align-items:center;background:#fff;border:1px solid var(--linea);border-radius:10px;padding:0 12px 0 0}
+  .sim-field input{margin:0;border:none;background:transparent;font-family:var(--mono);font-size:18px;padding:11px 12px}
+  .sim-field input:focus{outline:none}
+  .sim-field:focus-within{outline:2px solid var(--indigo)}
+  .sim-unit{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--niebla)}
+  td.total{font-family:var(--disp);font-size:16px;font-weight:600;color:var(--indigo-tinta)}
   .bank b{color:var(--tinta)}
 
   footer{margin-top:56px;border-top:1px solid var(--linea);padding:26px 0 40px;font-size:13px;color:var(--niebla)}
@@ -110,8 +123,9 @@
 
 <nav><div class="wrap nav-in">
   <a class="mark" href="/"><img src="icon.png" alt=""><span>Antes <em>&amp;</em> Después</span></a>
+  <span class="mono nav-title">Portal de afiliados</span>
   <div class="nav-right">
-    <span class="mono" style="font-size:11.5px;letter-spacing:.12em;color:var(--niebla);text-transform:uppercase;">Portal de afiliados</span>
+    <span class="nav-user" id="nav-user"></span>
     <button class="linkbtn" id="btn-salir" style="display:none;" onclick="salir()">Cerrar sesión</button>
   </div>
 </div></nav>
@@ -155,6 +169,21 @@
   <h2>Tus códigos</h2>
   <p class="sec-sub">Compartilos con clínicas y profesionales. El regalo se aplica cuando lo canjean en la app.</p>
   <div class="codes" id="codes"></div>
+
+  <h2 id="simulador">Cuánto podés ganar</h2>
+  <p class="sec-sub">Un ejercicio para mostrarle a quien quieras sumar: cambiá los números y mirá lo que deja cada recomendación, plan por plan, sobre los precios mensuales vigentes.</p>
+  <div class="sim">
+    <div class="sim-inputs">
+      <div><label for="sim-pct">Comisión</label>
+        <div class="sim-field"><input type="number" id="sim-pct" min="1" max="100" step="1" value="40" oninput="simular()"><span class="sim-unit">%</span></div></div>
+      <div><label for="sim-meses">Durante</label>
+        <div class="sim-field"><input type="number" id="sim-meses" min="1" max="60" step="1" value="12" oninput="simular()"><span class="sim-unit">meses</span></div></div>
+      <div><label for="sim-refs">Referidos que pagan</label>
+        <div class="sim-field"><input type="number" id="sim-refs" min="1" max="1000" step="1" value="5" oninput="simular()"><span class="sim-unit">clínicas</span></div></div>
+    </div>
+    <div class="tbl-card"><div class="tbl-scroll"><table id="tbl-sim"></table></div></div>
+    <p class="note" id="sim-note"></p>
+  </div>
 
   <h2>Tus referidos</h2>
   <p class="sec-sub">Cada clínica que canjeó uno de tus códigos y en qué estado está.</p>
@@ -261,10 +290,42 @@ async function cargar(token) {
   }
 }
 
+// Precios de lista por plan (los manda la función desde plan_prices); el
+// simulador los usa para el ejercicio de comisiones.
+let PRECIOS = {};
+
+function simular() {
+  const pct = Math.max(0, Number($('sim-pct').value) || 0);
+  const meses = Math.max(0, Math.round(Number($('sim-meses').value) || 0));
+  const refs = Math.max(0, Math.round(Number($('sim-refs').value) || 0));
+  const planes = ['profesional', 'clinica', 'clinica_pro'].filter((k) => PRECIOS[k] > 0);
+  if (!planes.length) { $('tbl-sim').innerHTML = '<tr><td class="empty">Sin precios cargados</td></tr>'; return; }
+  const filas = planes.map((k) => {
+    const precio = PRECIOS[k];
+    const porMes = precio * pct / 100;
+    const porReferido = porMes * meses;
+    return { k, precio, porMes, porReferido, total: porReferido * refs };
+  });
+  $('tbl-sim').innerHTML = `
+    <thead><tr><th>Plan</th><th>Precio mensual</th><th>Tu comisión por mes</th><th>Por cada referido (${meses} meses)</th><th>Con ${refs} referidos</th></tr></thead>
+    <tbody>${filas.map((f) => `<tr>
+      <td>${esc(PLAN_NOMBRE[f.k] ?? f.k)}</td>
+      <td class="num">${plata(f.precio)}</td>
+      <td class="num">${plata(f.porMes)}</td>
+      <td class="num">${plata(f.porReferido)}</td>
+      <td class="total">${plata(f.total)}</td></tr>`).join('')}
+    </tbody>`;
+  $('sim-note').textContent =
+    `Ejemplo con ${pct}% durante ${meses} meses sobre el precio de lista mensual, suponiendo que cada referido paga todos los meses por el canal directo. Las condiciones reales son las de tu código.`;
+}
+
 function render(d) {
   $('login').style.display = 'none';
   $('panel').style.display = 'block';
   $('btn-salir').style.display = '';
+  $('nav-user').textContent = d.afiliado.name;
+  PRECIOS = d.precios ?? {};
+  simular();
   $('hola').textContent = `Hola, ${d.afiliado.name.split(' ')[0]} 👋`;
 
   const s = d.resumen;
