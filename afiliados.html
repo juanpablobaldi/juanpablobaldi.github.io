@@ -110,6 +110,9 @@
   .sim-field:focus-within{outline:2px solid var(--indigo)}
   .sim-unit{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--niebla)}
   td.total{font-family:var(--disp);font-size:16px;font-weight:600;color:var(--indigo-tinta)}
+  .sim-cur{display:flex;gap:6px}
+  .sim-cur button{flex:1;border:1px solid var(--linea);background:#fff;border-radius:10px;padding:11px 6px;font-family:var(--body);font-size:14px;cursor:pointer}
+  .sim-cur button.on{border-color:var(--indigo);background:#EEF2FF;color:var(--indigo-tinta);font-weight:600}
   .bank b{color:var(--tinta)}
 
   footer{margin-top:56px;border-top:1px solid var(--linea);padding:26px 0 40px;font-size:13px;color:var(--niebla)}
@@ -180,6 +183,11 @@
         <div class="sim-field"><input type="number" id="sim-meses" min="1" max="60" step="1" value="12" oninput="simular()"><span class="sim-unit">meses</span></div></div>
       <div><label for="sim-refs">Referidos que pagan</label>
         <div class="sim-field"><input type="number" id="sim-refs" min="1" max="1000" step="1" value="5" oninput="simular()"><span class="sim-unit">clínicas</span></div></div>
+      <div><label>Moneda</label><div class="sim-cur">
+        <button type="button" id="sim-cur-ars" class="on" onclick="setMoneda('ARS')">🇦🇷 ARS</button>
+        <button type="button" id="sim-cur-usd" onclick="setMoneda('USD')">🇺🇸 USD</button></div></div>
+      <div id="sim-tc-wrap" style="display:none;"><label for="sim-tc">Tipo de cambio (ARS por USD)</label>
+        <div class="sim-field"><input type="number" id="sim-tc" min="1" step="1" placeholder="1.000" oninput="simular()"><span class="sim-unit">$/US$</span></div></div>
     </div>
     <div class="tbl-card"><div class="tbl-scroll"><table id="tbl-sim"></table></div></div>
     <p class="note" id="sim-note"></p>
@@ -293,11 +301,34 @@ async function cargar(token) {
 // Precios de lista por plan (los manda la función desde plan_prices); el
 // simulador los usa para el ejercicio de comisiones.
 let PRECIOS = {};
+// Moneda: los precios de lista están en ARS; en USD se dividen por el tipo de
+// cambio (dólar oficial del día por defecto, editable).
+let SIM_MONEDA = 'ARS';
+function setMoneda(m) {
+  SIM_MONEDA = m;
+  $('sim-cur-ars').classList.toggle('on', m === 'ARS');
+  $('sim-cur-usd').classList.toggle('on', m === 'USD');
+  $('sim-tc-wrap').style.display = m === 'USD' ? '' : 'none';
+  if (m === 'USD' && !$('sim-tc').value) cargarTipoDeCambio();
+  simular();
+}
+async function cargarTipoDeCambio() {
+  try {
+    const r = await fetch('https://dolarapi.com/v1/dolares/oficial');
+    const d = await r.json();
+    if (d?.venta > 0 && !$('sim-tc').value) { $('sim-tc').value = Math.round(d.venta); simular(); }
+  } catch {}
+}
+const usd = (n) => 'US$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
 function simular() {
   const pct = Math.max(0, Number($('sim-pct').value) || 0);
   const meses = Math.max(0, Math.round(Number($('sim-meses').value) || 0));
   const refs = Math.max(0, Math.round(Number($('sim-refs').value) || 0));
+  const tc = Number($('sim-tc').value) || 0;
+  const enUsd = SIM_MONEDA === 'USD';
+  const conv = (n) => enUsd ? (tc > 0 ? n / tc : NaN) : n;
+  const fmt = (n) => isNaN(n) ? '—' : enUsd ? usd(n) : plata(n);
   const planes = ['profesional', 'clinica', 'clinica_pro'].filter((k) => PRECIOS[k] > 0);
   if (!planes.length) { $('tbl-sim').innerHTML = '<tr><td class="empty">Sin precios cargados</td></tr>'; return; }
   const filas = planes.map((k) => {
@@ -310,13 +341,14 @@ function simular() {
     <thead><tr><th>Plan</th><th>Precio mensual</th><th>Tu comisión por mes</th><th>Por cada referido (${meses} meses)</th><th>Con ${refs} referidos</th></tr></thead>
     <tbody>${filas.map((f) => `<tr>
       <td>${esc(PLAN_NOMBRE[f.k] ?? f.k)}</td>
-      <td class="num">${plata(f.precio)}</td>
-      <td class="num">${plata(f.porMes)}</td>
-      <td class="num">${plata(f.porReferido)}</td>
-      <td class="total">${plata(f.total)}</td></tr>`).join('')}
+      <td class="num">${fmt(conv(f.precio))}</td>
+      <td class="num">${fmt(conv(f.porMes))}</td>
+      <td class="num">${fmt(conv(f.porReferido))}</td>
+      <td class="total">${fmt(conv(f.total))}</td></tr>`).join('')}
     </tbody>`;
-  $('sim-note').textContent =
-    `Ejemplo con ${pct}% durante ${meses} meses sobre el precio de lista mensual, suponiendo que cada referido paga todos los meses por el canal directo. Las condiciones reales son las de tu código.`;
+  $('sim-note').textContent = (enUsd
+    ? (tc > 0 ? `Valores en dólares al tipo de cambio de ${plata(tc)} por US$ (editable). ` : 'Ingresá el tipo de cambio para ver los valores en dólares. ')
+    : '') + `Ejemplo con ${pct}% durante ${meses} meses sobre el precio de lista mensual, suponiendo que cada referido paga todos los meses por el canal directo. Las condiciones reales son las de tu código.`;
 }
 
 function render(d) {
