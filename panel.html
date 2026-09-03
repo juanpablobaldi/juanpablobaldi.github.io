@@ -66,6 +66,14 @@
   .ext-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
   .ext-links a { font-size: 13px; color: #0066cc; text-decoration: none; border: 1px solid #cfe0f5; border-radius: 6px; padding: 5px 10px; background: white; }
   .ext-links a:hover { border-color: #0066cc; }
+  .sim-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 10px 0 12px; }
+  .sim-inputs label { display: block; font-size: 11px; text-transform: uppercase; color: #999; letter-spacing: .5px; margin-bottom: 4px; }
+  .sim-field { display: flex; align-items: center; background: white; border: 1px solid #ddd; border-radius: 6px; padding-right: 10px; }
+  .sim-field input { border: none; background: transparent; font: inherit; font-size: 18px; padding: 8px 10px; width: 100%; }
+  .sim-field input:focus { outline: none; }
+  .sim-field:focus-within { border-color: #0066cc; }
+  .sim-unit { font-size: 11px; color: #999; text-transform: uppercase; white-space: nowrap; }
+  td.sim-total { font-weight: 700; color: #0066cc; }
   #plan-detalle { margin-top: 10px; }
   #plan-detalle h2 { display: flex; justify-content: space-between; align-items: center; font-size: 15px; margin: 8px 0; }
 </style>
@@ -105,6 +113,23 @@ const fecha = (d) => {
 };
 const fechaHora = (d) => new Date(d).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
 const plata = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+// Simulador de comisiones (misma cuenta que el portal de afiliados): precios
+// de lista que manda la función (plan_prices) × % × meses × referidos.
+const SIM_PLAN = { profesional: 'Profesional', clinica: 'Clínica', clinica_pro: 'Clínica Pro' };
+function simular() {
+  const precios = DATOS?.precios ?? {};
+  const pct = Math.max(0, Number($('sim-pct').value) || 0);
+  const meses = Math.max(0, Math.round(Number($('sim-meses').value) || 0));
+  const refs = Math.max(0, Math.round(Number($('sim-refs').value) || 0));
+  const planes = ['profesional', 'clinica', 'clinica_pro'].filter((k) => precios[k] > 0);
+  $('tbl-sim').innerHTML = `
+    <thead><tr><th>Plan</th><th>Precio mensual</th><th>Comisión por mes</th><th>Por cada referido (${meses} meses)</th><th>Con ${refs} referidos</th></tr></thead>
+    <tbody>${planes.map((k) => {
+      const porMes = precios[k] * pct / 100, porRef = porMes * meses;
+      return `<tr><td>${SIM_PLAN[k]}</td><td>${plata(precios[k])}</td><td>${plata(porMes)}</td><td>${plata(porRef)}</td><td class="sim-total">${plata(porRef * refs)}</td></tr>`;
+    }).join('') || '<tr><td colspan="5">Sin precios cargados</td></tr>'}</tbody>`;
+  $('sim-note').textContent = `Ejemplo con ${pct}% durante ${meses} meses sobre el precio de lista mensual, suponiendo que cada referido paga todos los meses por el canal directo.`;
+}
 // Número de la tabla de planes → click muestra las clínicas que lo componen
 const num = (n, filtro, titulo) => n > 0
   ? `<button class="numlink" onclick="verClinicas('${filtro}', '${String(titulo).replace(/'/g, '&#39;')}')">${n}</button>`
@@ -188,6 +213,7 @@ async function cargar(token) {
     <a class="navbtn" href="#metricas">📈 Métricas</a>
     <a class="navbtn" href="#revenue">💰 Revenue</a>
     <a class="navbtn" href="#referidos">🤝 Referidos</a>
+    <a class="navbtn" href="#simulador">🧮 Simulador</a>
     <a class="navbtn" href="#reembolsos">↩️ Reembolsos</a>
     <a class="navbtn" href="#pagos">💳 Pagos directos</a>
   </nav>
@@ -231,6 +257,16 @@ async function cargar(token) {
 
   <h1 id="revenue">Revenue histórico</h1>
   ${revenueSection(d.revenue ?? [])}
+
+  <h1 id="simulador">Simulador de comisiones</h1>
+  <p style="color:#666; font-size:13px; margin:0 0 6px;">Para mostrarle a un potencial afiliado: cambiá comisión, meses y cantidad de referidos, y la tabla calcula por plan sobre los precios de lista vigentes.</p>
+  <div class="sim-inputs">
+    <div><label for="sim-pct">Comisión</label><div class="sim-field"><input type="number" id="sim-pct" min="1" max="100" step="1" value="40" oninput="simular()"><span class="sim-unit">%</span></div></div>
+    <div><label for="sim-meses">Durante</label><div class="sim-field"><input type="number" id="sim-meses" min="1" max="60" step="1" value="12" oninput="simular()"><span class="sim-unit">meses</span></div></div>
+    <div><label for="sim-refs">Referidos que pagan</label><div class="sim-field"><input type="number" id="sim-refs" min="1" max="1000" step="1" value="5" oninput="simular()"><span class="sim-unit">clínicas</span></div></div>
+  </div>
+  <table id="tbl-sim"></table>
+  <p id="sim-note" style="color:#999; font-size:12px; margin-top:6px;"></p>
 
   <h1 id="referidos">Referidos</h1>
   <div class="grid">
@@ -520,6 +556,7 @@ function refModoCrear() {
   $('rf-kind').disabled = false;
   if ($('rf-ref').options.length) $('rf-ref').selectedIndex = 0;
   $('rf-days').value = DATOS?.settings?.clinic_gift_days ?? 30; $('rf-plan').value = 'clinica';
+  simular();
   $('rf-pct').value = 20; $('rf-months').value = 6;
   $('rf-max').value = ''; $('rf-notes').value = '';
   refKindChange();
