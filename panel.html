@@ -61,6 +61,13 @@
   .rowbtn { background: none; border: 1px solid #ddd; border-radius: 5px; padding: 4px 9px; font-size: 12px; cursor: pointer; color: #333; white-space: nowrap; }
   .rowbtn:hover { border-color: #0066cc; color: #0066cc; }
   .rowbtn.danger:hover { border-color: #ef4444; color: #ef4444; }
+  .numlink { background: none; border: none; padding: 0; font: inherit; color: #0066cc; cursor: pointer; text-decoration: underline dotted; }
+  .numlink:hover { text-decoration: underline; }
+  .ext-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
+  .ext-links a { font-size: 13px; color: #0066cc; text-decoration: none; border: 1px solid #cfe0f5; border-radius: 6px; padding: 5px 10px; background: white; }
+  .ext-links a:hover { border-color: #0066cc; }
+  #plan-detalle { margin-top: 10px; }
+  #plan-detalle h2 { display: flex; justify-content: space-between; align-items: center; font-size: 15px; margin: 8px 0; }
 </style>
 </head>
 <body>
@@ -98,6 +105,41 @@ const fecha = (d) => {
 };
 const fechaHora = (d) => new Date(d).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
 const plata = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+// Número de la tabla de planes → click muestra las clínicas que lo componen
+const num = (n, filtro, titulo) => n > 0
+  ? `<button class="numlink" onclick="verClinicas('${filtro}', '${String(titulo).replace(/'/g, '&#39;')}')">${n}</button>`
+  : String(n);
+const FUENTE = { apple: '🍎 Apple', google: '🤖 Google', direct: '💳 Mercado Pago', promo: '🎁 Promo/Referido' };
+const PLAN = { free: 'Free', profesional: 'Profesional', clinica: 'Clínica', clinica_pro: 'Clínica Pro' };
+// Mismos criterios que la función dashboard-referrals: vigente ya trae el
+// vencimiento aplicado; trial = plan_is_trial con fuente de cobro real;
+// promo = plan_source 'promo'.
+function verClinicas(filtro, titulo) {
+  const [tipo, valor] = filtro.split(':');
+  const pago = (o) => ['apple', 'google', 'direct'].includes(o.plan_source);
+  const lista = (DATOS?.orgs ?? []).filter((o) => {
+    if (tipo === 'plan') return o.vigente === valor;
+    if (tipo === 'trial') return o.vigente === valor && pago(o) && o.plan_is_trial;
+    if (tipo === 'promo') return o.vigente === valor && o.plan_source === 'promo';
+    if (tipo === 'src') return o.vigente !== 'free' && o.plan_source === valor;
+    return false;
+  });
+  const box = $('plan-detalle');
+  box.innerHTML = `
+    <h2><span>${esc(titulo)} · ${lista.length} clínica${lista.length === 1 ? '' : 's'}</span>
+      <button class="rowbtn" onclick="$('plan-detalle').innerHTML = ''">Cerrar</button></h2>
+    <table>
+      <thead><tr><th>Clínica</th><th>Plan vigente</th><th>Fuente</th><th>Trial</th><th>Vence</th><th>Creada</th></tr></thead>
+      <tbody>${lista.map((o) => `<tr>
+        <td>${esc(o.name)}</td><td>${PLAN[o.vigente] ?? esc(o.vigente)}</td>
+        <td>${o.vigente === 'free' ? '—' : (FUENTE[o.plan_source] ?? esc(o.plan_source))}</td>
+        <td>${o.vigente !== 'free' && o.plan_is_trial ? 'sí' : '—'}</td>
+        <td>${o.vigente !== 'free' && o.plan_expires_at ? fecha(o.plan_expires_at) : '—'}</td>
+        <td>${fecha(o.created_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sin clínicas</td></tr>'}
+      </tbody>
+    </table>`;
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
 
 async function entrar() {
   $('login-err').textContent = '';
@@ -149,6 +191,12 @@ async function cargar(token) {
     <a class="navbtn" href="#reembolsos">↩️ Reembolsos</a>
     <a class="navbtn" href="#pagos">💳 Pagos directos</a>
   </nav>
+  <div class="ext-links">
+    <a href="https://appstoreconnect.apple.com/analytics/app/d30/6790166290/overview" target="_blank" rel="noopener">🍎 App Store · Analytics</a>
+    <a href="https://appstoreconnect.apple.com/trends" target="_blank" rel="noopener">🍎 App Store · Ventas y tendencias</a>
+    <a href="https://play.google.com/console/" target="_blank" rel="noopener">🤖 Play Console · Estadísticas</a>
+    <a href="https://app.revenuecat.com/" target="_blank" rel="noopener">🐱 RevenueCat · Suscripciones</a>
+  </div>
   <h1 id="metricas">Métricas generales</h1>
   <div class="grid">
     <div class="card"><div class="card-title">Clínicas totales</div>
@@ -173,12 +221,13 @@ async function cargar(token) {
   <table>
     <thead><tr><th>Plan</th><th>Vigentes</th><th>En trial store</th><th>En trial referido</th><th></th><th>Fuente</th><th>Vigentes</th></tr></thead>
     <tbody>
-      <tr><td>Free</td><td>${p.free}</td><td>—</td><td>—</td><td></td><td>🍎 Apple</td><td>${f.apple}</td></tr>
-      <tr><td>Profesional</td><td>${p.profesional}</td><td>${(d.planes_trial ?? {}).profesional ?? 0}</td><td>${(d.planes_trial_ref ?? {}).profesional ?? 0}</td><td></td><td>🤖 Google</td><td>${f.google}</td></tr>
-      <tr><td>Clínica</td><td>${p.clinica}</td><td>${(d.planes_trial ?? {}).clinica ?? 0}</td><td>${(d.planes_trial_ref ?? {}).clinica ?? 0}</td><td></td><td>💳 Directo (MP)</td><td>${f.direct}</td></tr>
-      <tr><td>Clínica Pro</td><td>${p.clinica_pro}</td><td>${(d.planes_trial ?? {}).clinica_pro ?? 0}</td><td>${(d.planes_trial_ref ?? {}).clinica_pro ?? 0}</td><td></td><td>🎁 Promo/Referido</td><td>${f.promo}</td></tr>
+      <tr><td>Free</td><td>${num(p.free, 'plan:free', 'Free')}</td><td>—</td><td>—</td><td></td><td>🍎 Apple</td><td>${num(f.apple, 'src:apple', 'Fuente Apple')}</td></tr>
+      <tr><td>Profesional</td><td>${num(p.profesional, 'plan:profesional', 'Profesional')}</td><td>${num((d.planes_trial ?? {}).profesional ?? 0, 'trial:profesional', 'Profesional en trial de tienda/MP')}</td><td>${num((d.planes_trial_ref ?? {}).profesional ?? 0, 'promo:profesional', 'Profesional por promo/referido')}</td><td></td><td>🤖 Google</td><td>${num(f.google, 'src:google', 'Fuente Google')}</td></tr>
+      <tr><td>Clínica</td><td>${num(p.clinica, 'plan:clinica', 'Clínica')}</td><td>${num((d.planes_trial ?? {}).clinica ?? 0, 'trial:clinica', 'Clínica en trial de tienda/MP')}</td><td>${num((d.planes_trial_ref ?? {}).clinica ?? 0, 'promo:clinica', 'Clínica por promo/referido')}</td><td></td><td>💳 Directo (MP)</td><td>${num(f.direct, 'src:direct', 'Fuente Mercado Pago')}</td></tr>
+      <tr><td>Clínica Pro</td><td>${num(p.clinica_pro, 'plan:clinica_pro', 'Clínica Pro')}</td><td>${num((d.planes_trial ?? {}).clinica_pro ?? 0, 'trial:clinica_pro', 'Clínica Pro en trial de tienda/MP')}</td><td>${num((d.planes_trial_ref ?? {}).clinica_pro ?? 0, 'promo:clinica_pro', 'Clínica Pro por promo/referido')}</td><td></td><td>🎁 Promo/Referido</td><td>${num(f.promo, 'src:promo', 'Fuente promo/referido')}</td></tr>
     </tbody>
   </table>
+  <div id="plan-detalle"></div>
 
   <h1 id="revenue">Revenue histórico</h1>
   ${revenueSection(d.revenue ?? [])}
