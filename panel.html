@@ -295,7 +295,7 @@ async function cargar(token) {
     <div><label>Moneda</label><div class="sim-cur">
       <button type="button" id="sim-cur-ars" class="on" onclick="setMoneda('ARS')">🇦🇷 ARS</button>
       <button type="button" id="sim-cur-usd" onclick="setMoneda('USD')">🇺🇸 USD</button></div></div>
-    <div id="sim-tc-wrap" style="display:none;"><label for="sim-tc">Tipo de cambio (ARS por USD)</label><div class="sim-field"><input type="number" id="sim-tc" min="1" step="1" placeholder="1.000" oninput="simular()"><span class="sim-unit">$/US$</span></div></div>
+    <div id="sim-tc-wrap" style="display:none;"><label for="sim-tc">Tipo de cambio</label><div class="sim-field"><input type="number" id="sim-tc" min="1" step="1" placeholder="1.000" oninput="simular()"><span class="sim-unit">$/US$</span></div></div>
   </div>
   <table id="tbl-sim"></table>
   <p id="sim-note" style="color:#999; font-size:12px; margin-top:6px;"></p>
