@@ -137,7 +137,7 @@ async function cargarTipoDeCambio() {
     if (d?.venta > 0 && !$('sim-tc').value) { $('sim-tc').value = Math.round(d.venta); simular(); }
   } catch {}
 }
-const usd = (n) => 'US$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const usd = (n) => 'US$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 function simular() {
   const precios = DATOS?.precios ?? {};
   const pct = Math.max(0, Number($('sim-pct').value) || 0);
