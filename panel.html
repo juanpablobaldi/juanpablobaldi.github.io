@@ -525,6 +525,7 @@ async function cargar(token) {
     </tr>`).join('') || '<tr><td colspan="5" class="empty">Sin eventos</td></tr>'}</tbody>
   </table>`;
   wireRevenueHover();
+  simular(); // tabla del simulador de comisiones (precios de lista ya cargados en DATOS)
 }
 
 // ── Gestión de códigos de referido ───────────────────────────────────────────
@@ -576,7 +577,6 @@ function refModoCrear() {
   $('rf-kind').disabled = false;
   if ($('rf-ref').options.length) $('rf-ref').selectedIndex = 0;
   $('rf-days').value = DATOS?.settings?.clinic_gift_days ?? 30; $('rf-plan').value = 'clinica';
-  simular();
   $('rf-pct').value = 20; $('rf-months').value = 6;
   $('rf-max').value = ''; $('rf-notes').value = '';
   refKindChange();
