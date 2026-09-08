@@ -162,7 +162,7 @@
     <div class="eyebrow" style="margin-top:6px;">Tu programa de referidos</div>
     <h1 id="hola">Hola 👋</h1>
     <p>Cada clínica que llega con tu código recibe días de regalo, y vos cobrás tu comisión
-       sobre los pagos que hagan por el canal directo. Acá ves todo: tus códigos, tus referidos
+       sobre cada pago mensual que hagan, por Mercado Pago o por las tiendas. Acá ves todo: tus códigos, tus referidos
        y el estado de tus cobros.</p>
   </div>
 
@@ -198,7 +198,7 @@
   <h2>Comisiones generadas</h2>
   <p class="sec-sub">Un renglón por cada cobro real a un referido tuyo dentro de tu período de comisión.</p>
   <div class="tbl-card"><div class="tbl-scroll"><table id="tbl-comms"></table></div></div>
-  <p class="note">Las comisiones se generan sobre los cobros del canal directo (Mercado Pago). Las suscripciones por App Store / Google Play las cobra la tienda y no generan comisión.</p>
+  <p class="note">Las comisiones se calculan sobre el precio de lista en pesos de cada plan, pague la clínica por Mercado Pago o por App Store / Google Play, y se liquidan en pesos.</p>
 
   <h2>Tus cobros</h2>
   <p class="sec-sub">Los pagos de comisiones que ya te hicimos, y lo que está pendiente de liquidar.</p>
@@ -336,8 +336,8 @@ function simular() {
       <td class="total">${fmt(f.total)}</td></tr>`).join('')}
     </tbody>`;
   $('sim-note').textContent = enUsd
-    ? `Ejemplo con ${pct}% durante ${meses} meses sobre el precio mensual de las tiendas (App Store / Google Play) en dólares, suponiendo que cada referido paga todos los meses. Las condiciones reales son las de tu código.`
-    : `Ejemplo con ${pct}% durante ${meses} meses sobre el precio de lista mensual del canal directo en pesos, suponiendo que cada referido paga todos los meses. Las condiciones reales son las de tu código.`;
+    ? `Ejemplo con ${pct}% durante ${meses} meses como referencia en dólares al precio de tienda, suponiendo que cada referido paga todos los meses. La comisión real se calcula sobre el precio de lista en pesos, cualquiera sea el canal.`
+    : `Ejemplo con ${pct}% durante ${meses} meses sobre el precio de lista mensual en pesos, cualquiera sea el canal de pago, suponiendo que cada referido paga todos los meses. Las condiciones reales son las de tu código.`;
 }
 
 function render(d) {
@@ -378,7 +378,7 @@ function render(d) {
       <div class="code-meta">
         Regalo al que canjea: <b>${c.trial_days} días</b> de plan <b>${esc(PLAN_NOMBRE[c.plan_id] ?? c.plan_id)}</b><br>
         ${c.kind === 'consultant'
-          ? `Tu comisión: <b>${c.commission_pct}%</b> de cada cobro directo durante <b>${c.commission_months ?? 6} meses</b>`
+          ? `Tu comisión: <b>${c.commission_pct}%</b> de cada cobro mensual durante <b>${c.commission_months ?? 6} meses</b>`
           : 'Código de recomendación entre clínicas'}
         ${c.max_redemptions ? `<br>Cupo: ${c.max_redemptions} canjes` : ''}
       </div>
@@ -414,7 +414,7 @@ function render(d) {
       <td class="num">${plata(c.precio)}</td>
       <td class="num">${c.pct}%</td>
       <td class="num"><strong>${plata(c.comision)}</strong></td>
-    </tr>`).join('') || '<tr><td colspan="6" class="empty">Cuando un referido tuyo pague por el canal directo, tu comisión aparece acá.</td></tr>'}</tbody>`;
+    </tr>`).join('') || '<tr><td colspan="6" class="empty">Cuando un referido tuyo pague su plan, tu comisión aparece acá.</td></tr>'}</tbody>`;
 
   // Pagos recibidos
   $('tbl-pagos').innerHTML = `

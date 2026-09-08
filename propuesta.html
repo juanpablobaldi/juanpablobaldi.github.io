@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Propuesta para afiliados — Antes &amp; Después</title>
+<link rel="icon" href="icon.png">
+<style>
+  :root { --hueso:#FAFAF8; --tinta:#101014; --indigo:#6366F1; --indigo-tinta:#34367A; --verde:#16A34A; --niebla:#8A8F98; --linea:#E7E6E1; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { color-scheme: light; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; color: var(--tinta); background: #e9e9e6; font-size: 14px; line-height: 1.5; }
+  .hoja { background: white; width: 210mm; min-height: 297mm; margin: 24px auto; padding: 12mm 16mm 14mm; position: relative; box-shadow: 0 2px 16px rgba(0,0,0,.12); }
+  .hoja + .hoja { page-break-before: always; }
+  .barra { position: fixed; top: 0; left: 0; right: 0; background: var(--tinta); color: white; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; z-index: 9; }
+  .barra button { background: var(--indigo); color: white; border: 0; border-radius: 6px; padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+  .barra .tip { color: #bbb; }
+  .con-barra { padding-top: 44px; }
+
+  header { display: flex; align-items: center; gap: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--linea); }
+  header img { width: 46px; height: 46px; border-radius: 11px; }
+  header .marca { font-weight: 700; font-size: 17px; letter-spacing: -.01em; }
+  header .sub { color: var(--niebla); font-size: 12.5px; }
+  header .fecha { margin-left: auto; color: var(--niebla); font-size: 12px; text-align: right; }
+
+  .hero { margin: 14px 0 10px; }
+  .hero .eti { color: var(--indigo); font-weight: 600; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+  .hero h1 { font-size: 27px; line-height: 1.2; margin: 6px 0 8px; letter-spacing: -.02em; }
+  .hero p { color: #444; max-width: 62ch; }
+
+  h2 { font-size: 15.5px; margin: 12px 0 8px; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
+  h2 .n { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: var(--indigo); color: white; font-size: 12px; align-items: center; justify-content: center; }
+
+  .beneficios { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+  .ben { display: flex; gap: 10px; }
+  .ben .ico { font-size: 20px; line-height: 1.2; }
+  .ben b { display: block; font-size: 13.5px; }
+  .ben span { color: #555; font-size: 12.5px; }
+
+  .pasos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .paso { background: var(--hueso); border: 1px solid var(--linea); border-radius: 10px; padding: 10px 12px; }
+  .paso .k { color: var(--indigo); font-weight: 700; font-size: 11px; letter-spacing: .06em; }
+  .paso > b { display: block; margin: 3px 0 4px; font-size: 13.5px; }
+  .paso span { color: #555; font-size: 12.5px; }
+
+  .codigo-card { display: grid; grid-template-columns: 1fr 1.3fr; gap: 16px; align-items: stretch; }
+  .codigo { background: var(--indigo-tinta); color: white; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; justify-content: center; }
+  .codigo .eti { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; opacity: .8; }
+  .codigo .val { font-size: 34px; font-weight: 800; letter-spacing: .06em; margin: 4px 0 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .codigo .det { font-size: 12.5px; opacity: .92; }
+  .wa { background: var(--hueso); border: 1px dashed #c9c8c2; border-radius: 12px; padding: 12px 14px; font-size: 12.5px; }
+  .wa .eti { color: var(--niebla); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; }
+  .wa p { white-space: pre-line; }
+
+  .pro { display: grid; grid-template-columns: 1fr auto auto; gap: 16px; align-items: center; border: 1px solid var(--linea); border-radius: 12px; padding: 14px 16px; }
+  .pro .val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 800; font-size: 20px; color: var(--indigo-tinta); letter-spacing: .05em; }
+  .pro ol { margin: 6px 0 0 16px; color: #444; font-size: 12.5px; }
+  .qr { text-align: center; font-size: 11px; color: var(--niebla); }
+  .qr img, .qr canvas { display: block; width: 84px; height: 84px; margin: 0 auto 4px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--linea); }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { background: var(--hueso); color: #444; font-weight: 600; font-size: 12px; }
+  td.dest { font-weight: 700; color: var(--indigo-tinta); }
+  .nota { color: var(--niebla); font-size: 11.5px; margin-top: 6px; }
+  .por-clinica { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+  .pc { border: 1px solid var(--linea); border-radius: 10px; padding: 10px 12px; }
+  .pc .p { font-size: 12px; color: var(--niebla); }
+  .pc .v { font-size: 20px; font-weight: 800; color: var(--indigo-tinta); }
+  .pc .s { font-size: 12px; color: #555; }
+
+  .cond { columns: 2; column-gap: 20px; color: #444; font-size: 12.5px; }
+  .cond li { margin: 0 0 6px 16px; break-inside: avoid; }
+  footer { position: absolute; left: 16mm; right: 16mm; bottom: 6mm; display: flex; justify-content: space-between; color: var(--niebla); font-size: 11px; border-top: 1px solid var(--linea); padding-top: 8px; }
+
+  @media print {
+    @page { size: A4; margin: 0; }
+    body { background: white; }
+    .barra { display: none; }
+    .con-barra { padding-top: 0; }
+    .hoja { margin: 0; box-shadow: none; width: 210mm; height: 297mm; min-height: 0; overflow: hidden; break-inside: avoid; }
+  }
+</style>
+</head>
+<body class="con-barra">
+<div class="barra">
+  <span class="tip">Guardar como PDF: Imprimir → Destino «Guardar como PDF» → sin márgenes ni encabezados.</span>
+  <button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+</div>
+
+<section class="hoja">
+  <header>
+    <img src="icon.png" alt="">
+    <div><div class="marca">Antes &amp; Después</div><div class="sub">Fotografía clínica para medicina estética</div></div>
+    <div class="fecha">Programa de afiliados<br><span id="fecha"></span></div>
+  </header>
+
+  <div class="hero">
+    <div class="eti">Propuesta para <span id="nombre-eti"></span></div>
+    <h1>Recomendá la app que ordena las fotos de los consultorios y cobrá por cada clínica que se suscriba.</h1>
+    <p>Trabajás con clínicas de estética todos los días. Antes &amp; Después les resuelve algo que hoy hacen mal o no hacen: fotos comparables entre visitas, listas para mostrarle al paciente. Vos la recomendás con tu código, ellas la prueban gratis, y cuando pagan, cobrás.</p>
+  </div>
+
+  <h2><span class="n">1</span> Qué resuelve la app</h2>
+  <div class="pasos">
+    <div class="paso"><div class="k">PASO 1</div><b>Sacá las fotos base</b><span>En la primera visita la clínica registra la sesión inicial. La app etiqueta y guarda todo en la ficha del paciente.</span></div>
+    <div class="paso"><div class="k">PASO 2</div><b>El fantasma guía la repetición</b><span>En el control, la foto anterior aparece superpuesta en la cámara. Silueta, ángulo y distancia se ponen en verde cuando el encuadre coincide.</span></div>
+    <div class="paso"><div class="k">PASO 3</div><b>Comparativa lista para mostrar</b><span>Lado a lado, deslizador o video animado, con el logo de la clínica y fondo uniforme. Para el paciente o para redes.</span></div>
+  </div>
+  <div class="beneficios" style="margin-top:12px;">
+    <div class="ben"><div class="ico">💉</div><div><b>Registro de inyectables sobre la foto</b><span>Puntos y dosis marcados sobre la imagen del paciente, con espejo facial.</span></div></div>
+    <div class="ben"><div class="ico">🎨</div><div><b>Fondo uniforme y ojos cubiertos</b><span>Dos fotos de días distintos, un mismo estudio. Identidad del paciente protegida al compartir.</span></div></div>
+    <div class="ben"><div class="ico">👥</div><div><b>Equipo sincronizado</b><span>Lo que se fotografía en un consultorio aparece en todos los dispositivos de la clínica.</span></div></div>
+    <div class="ben"><div class="ico">🔒</div><div><b>Historia clínica, no galería</b><span>Consentimiento con firma dentro de la app, sin publicidad ni tracking de terceros.</span></div></div>
+  </div>
+
+  <h2><span class="n">2</span> Cómo funciona el programa</h2>
+  <div class="pasos">
+    <div class="paso"><div class="k">VOS</div><b>Compartís tu código</b><span>Por WhatsApp, en una capacitación, en tu firma de mail. Abajo tenés el texto listo para reenviar.</span></div>
+    <div class="paso"><div class="k">LA CLÍNICA</div><b>Lo canjea y arranca gratis</b><span>Al registrarse o desde Cuenta → «¿Tenés un código de referido?». Recibe <b id="dias-1"></b> días del plan <b id="plan-1"></b> sin cargo.</span></div>
+    <div class="paso"><div class="k">VOS</div><b>Cobrás cuando ella paga</b><span>El <b id="pct-1"></b> de cada pago mensual durante <b id="meses-1"></b>, pague por Mercado Pago o por la tienda de su celular.</span></div>
+  </div>
+
+  <h2><span class="n">3</span> Tu código</h2>
+  <div class="codigo-card">
+    <div class="codigo">
+      <div class="eti">Código de afiliado</div>
+      <div class="val" id="codigo"></div>
+      <div class="det"><span id="dias-2"></span> días de plan <span id="plan-2"></span> gratis para cada clínica que lo canjee. Sin límite de clínicas.</div>
+    </div>
+    <div class="wa">
+      <div class="eti">Mensaje listo para reenviar</div>
+      <p id="wa-texto"></p>
+    </div>
+  </div>
+
+  <footer><span>antesydespues.app</span><span>Página 1 de 2</span></footer>
+</section>
+
+<section class="hoja">
+  <header>
+    <img src="icon.png" alt="">
+    <div><div class="marca">Antes &amp; Después</div><div class="sub">Programa de afiliados · <span id="nombre-2"></span></div></div>
+  </header>
+
+  <h2><span class="n">4</span> Tu licencia Pro, sin cargo</h2>
+  <div class="pro" id="pro-box">
+    <div>
+      <div style="font-size:13.5px;">Para que conozcas la app a fondo antes de recomendarla, tenés el plan <b>Clínica Pro</b> completo sin costo mientras seas parte del programa.</div>
+      <ol id="pro-pasos">
+        <li>Descargá la app con los códigos QR de la derecha o desde <b>antesydespues.app</b>.</li>
+        <li>Creá tu cuenta con tu email.</li>
+        <li id="pro-paso-codigo">Al registrarte, cuando te pregunte por un código, ingresá <span class="val" id="pro-codigo" style="font-size:15px;"></span>.</li>
+      </ol>
+    </div>
+    <div class="qr"><canvas id="qr-ios"></canvas>App Store</div>
+    <div class="qr"><canvas id="qr-android"></canvas>Google Play</div>
+  </div>
+
+  <h2><span class="n">5</span> Cuánto podés ganar</h2>
+  <div class="por-clinica" id="por-clinica"></div>
+  <table id="tabla">
+    <thead><tr><th>Clínicas que pagan</th><th>Plan Profesional</th><th>Plan Clínica</th><th>Plan Clínica Pro</th></tr></thead>
+    <tbody id="tabla-body"></tbody>
+  </table>
+  <p class="nota" id="nota-tabla"></p>
+
+  <h2><span class="n">6</span> Condiciones</h2>
+  <ul class="cond">
+    <li>La comisión es el <b id="pct-3"></b> de cada pago mensual de la clínica referida, durante <b id="meses-3"></b> contados desde su primer pago.</li>
+    <li>Se calcula sobre el precio de lista en pesos del plan que tenga la clínica, sin importar si paga por Mercado Pago, App Store o Google Play.</li>
+    <li>Se liquida en pesos, por transferencia o efectivo, según lo que acordemos.</li>
+    <li>Cada clínica puede canjear un solo código en toda su vida, y solo si está en el plan gratuito.</li>
+    <li>Tu código no tiene tope de canjes ni de tiempo mientras seas parte del programa.</li>
+    <li>Seguís tus canjes, comisiones y pagos en tu portal: <b>antesydespues.app/afiliados.html</b>, con tu email y sin contraseña.</li>
+  </ul>
+
+  <footer><span id="contacto-pie">antesydespues.app</span><span>Página 2 de 2</span></footer>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+  const q = new URLSearchParams(location.search);
+  const PLAN = { profesional: 'Profesional', clinica: 'Clínica', clinica_pro: 'Clínica Pro' };
+  const nombre = q.get('nombre') || 'vos';
+  const codigo = (q.get('codigo') || 'TUCODIGO').toUpperCase();
+  const dias = Number(q.get('dias') || 30);
+  const plan = PLAN[q.get('plan')] || 'Clínica';
+  const pct = Number(q.get('pct') || 20);
+  const meses = Number(q.get('meses') || 6);
+  const pro = (q.get('pro') || '').toUpperCase();
+  const precios = {
+    profesional: Number(q.get('p_profesional') || 0),
+    clinica: Number(q.get('p_clinica') || 0),
+    clinica_pro: Number(q.get('p_clinica_pro') || 0),
+  };
+  const contacto = q.get('contacto') || '';
+  const plata = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+  const mesesTxt = `${meses} ${meses === 1 ? 'mes' : 'meses'}`;
+  const $ = (id) => document.getElementById(id);
+
+  $('fecha').textContent = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+  document.title = `Propuesta para ${nombre} — Antes & Después`;
+  ['nombre-eti', 'nombre-2'].forEach((id) => $(id).textContent = nombre);
+  ['dias-1', 'dias-2'].forEach((id) => $(id).textContent = dias);
+  ['plan-1', 'plan-2'].forEach((id) => $(id).textContent = plan);
+  ['pct-1', 'pct-3'].forEach((id) => $(id).textContent = pct + '%');
+  ['meses-1', 'meses-3'].forEach((id) => $(id).textContent = mesesTxt);
+  $('codigo').textContent = codigo;
+  $('wa-texto').textContent =
+    `Hola! Te recomiendo Antes & Después, la app para sacar fotos clínicas comparables y armar el antes/después de tus pacientes en un toque. ` +
+    `Con mi código ${codigo} tenés ${dias} días del plan ${plan} gratis. ` +
+    `Bajala en antesydespues.app y cargá el código cuando te registres.`;
+
+  if (pro) {
+    $('pro-codigo').textContent = pro;
+  } else {
+    $('pro-paso-codigo').innerHTML = 'Avisanos cuando la tengas creada y te activamos el plan Clínica Pro en el momento.';
+  }
+  if (contacto) $('contacto-pie').textContent = `antesydespues.app · ${contacto}`;
+
+  // Ganancias: por cada clínica, y escenarios de 5 / 10 / 20 clínicas
+  const planes = ['profesional', 'clinica', 'clinica_pro'];
+  $('por-clinica').innerHTML = planes.map((k) => {
+    const mensual = precios[k] * pct / 100;
+    return `<div class="pc"><div class="p">Por cada clínica en plan ${PLAN[k]}</div>
+      <div class="v">${plata(mensual)}<span style="font-size:12px;font-weight:500;color:#555;"> / mes</span></div>
+      <div class="s">${plata(mensual * meses)} en ${mesesTxt}</div></div>`;
+  }).join('');
+  $('tabla-body').innerHTML = [5, 10, 20].map((n) => `<tr><td>${n} clínicas</td>${planes.map((k) => {
+    const mensual = n * precios[k] * pct / 100;
+    return `<td><span class="dest">${plata(mensual)}</span> / mes<br><span style="color:#555;font-size:12px;">${plata(mensual * meses)} en ${mesesTxt}</span></td>`;
+  }).join('')}</tr>`).join('');
+  $('nota-tabla').textContent =
+    `Estimación con los precios de lista de hoy: Profesional ${plata(precios.profesional)}, Clínica ${plata(precios.clinica)} y Clínica Pro ${plata(precios.clinica_pro)} por mes. ` +
+    `Supone que cada clínica paga todos los meses del período. Los precios pueden actualizarse; tu porcentaje no.`;
+
+  // QR de descarga
+  const qr = (id, url) => {
+    const c = qrcode(0, 'M'); c.addData(url); c.make();
+    const cv = $(id), n = c.getModuleCount(), px = 4; cv.width = cv.height = n * px;
+    const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.fillStyle = '#101014';
+    for (let r = 0; r < n; r++) for (let col = 0; col < n; col++) if (c.isDark(r, col)) ctx.fillRect(col * px, r * px, px, px);
+  };
+  qr('qr-ios', 'https://apps.apple.com/app/id6790166290');
+  qr('qr-android', 'https://play.google.com/store/apps/details?id=com.jpbaldi.antesydespues');
+</script>
+</body>
+</html>

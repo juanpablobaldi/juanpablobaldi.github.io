@@ -246,7 +246,11 @@ function kpisAfiliados(d) {
   const activos = refs.filter((r) => r.active !== false);
   const conPortal = activos.filter((r) => r.email).length;
   const inactivos = refs.length - activos.length;
-  const canjes = (d.canjes ?? []).filter((c) => c.kind === 'consultant');
+  // Código de afiliado = consultant con comisión > 0 (los de 0% son licencias
+  // Pro de los afiliados o promos de la casa, no cuentan). Mismo criterio que
+  // referrer_revenue_totals / referrer_commission_totals (mig 062).
+  const codAf = new Set((d.codigos ?? []).filter(esCodigoAfiliado).map((c) => c.code));
+  const canjes = (d.canjes ?? []).filter((c) => codAf.has(c.code));
   const conv = canjes.filter((c) => c.first_payment_at);
   const pct = canjes.length ? Math.round((conv.length / canjes.length) * 100) : 0;
   const suma = (xs, k) => (xs ?? []).reduce((s, x) => s + Number(x[k] ?? 0), 0);
@@ -271,7 +275,7 @@ function kpisAfiliados(d) {
       <div class="card-sub">cobros reales de esas clínicas (MP y tiendas), netos de reembolsos</div></div>
     <div class="card"><div class="card-title">Costo de comisiones</div>
       <div class="card-value">${plata(comisiones)}</div>
-      <div class="card-sub">${plata(pagado)} ya pagado · solo comisionan los cobros directos por MP</div></div>
+      <div class="card-sub">${plata(pagado)} ya pagado · sobre precio de lista, por MP o tienda</div></div>
     <div class="card"><div class="card-title">Revenue neto</div>
       <div class="card-value${neto < 0 ? ' off' : ''}">${plata(neto)}</div>
       <div class="card-sub">revenue generado menos comisiones</div></div>
@@ -517,18 +521,22 @@ async function cargar(token) {
     </div>
   </div>
   <table>
-    <thead><tr><th>Afiliado</th><th>Email portal</th><th>Códigos</th><th>Cobro</th><th>Datos bancarios</th><th>Notas</th><th>Acciones</th></tr></thead>
+    <thead><tr><th>Afiliado</th><th>Email portal</th><th>Códigos</th><th>Licencia Pro</th><th>Cobro</th><th>Datos bancarios</th><th>Notas</th><th>Acciones</th></tr></thead>
     <tbody>${(d.referidores ?? []).map(r => `<tr>
       <td><strong>${esc(r.name)}</strong></td>
       <td>${r.email ? `${esc(r.email)}${r.portal_last_login ? `<div style="font-size:11px;color:#999;">entró ${fecha(r.portal_last_login)}</div>` : ''}` : '<span class="warn">sin email</span>'}</td>
-      <td>${(d.codigos ?? []).filter(c => c.referrer_id === r.id).map(c => esc(c.code)).join(', ') || '—'}</td>
+      <td>${(d.codigos ?? []).filter(c => c.referrer_id === r.id && !esCodigoPro(c)).map(c => esc(c.code)).join(', ') || '—'}</td>
+      <td>${(() => { const pro = (d.codigos ?? []).find(c => c.referrer_id === r.id && esCodigoPro(c));
+        return pro ? `<strong>${esc(pro.code)}</strong>${pro.canjes ? '<div style="font-size:11px;color:#10b981;">canjeada</div>' : '<div style="font-size:11px;color:#999;">sin canjear</div>'}`
+          : `<button class="rowbtn" onclick="crearCodigoPro('${esc(r.id)}')">＋ Crear</button>`; })()}</td>
       <td>${r.payout_method === 'transferencia' ? '🏦 Transferencia' : r.payout_method === 'efectivo' ? '💵 Efectivo' : '—'}</td>
       <td>${r.payout_method === 'transferencia'
           ? [r.bank_holder, r.bank_name, r.bank_cbu, r.bank_cuit ? 'CUIT ' + r.bank_cuit : null].filter(Boolean).map(esc).join(' · ') || '<span class="warn">⚠ faltan datos</span>'
           : '—'}</td>
       <td>${esc(r.notes ?? '') || '—'}</td>
-      <td><button class="rowbtn" onclick="editarReferidor('${esc(r.id)}')">✏️ Editar</button></td>
-    </tr>`).join('') || '<tr><td colspan="7" class="empty">Sin afiliados — creá el primero acá arriba</td></tr>'}</tbody>
+      <td style="white-space:nowrap;"><button class="rowbtn" onclick="editarReferidor('${esc(r.id)}')">✏️ Editar</button>
+        <button class="rowbtn" onclick="abrirPropuesta('${esc(r.id)}')">📄 Propuesta</button></td>
+    </tr>`).join('') || '<tr><td colspan="8" class="empty">Sin afiliados — creá el primero acá arriba</td></tr>'}</tbody>
   </table>
 
   <h1>Canjes</h1>
@@ -784,6 +792,41 @@ async function borrarPago(id) {
   const r = await postAPI({ action: 'delete_payout', id });
   if (r.ok) { await cargar(TOKEN); document.getElementById('po-form').scrollIntoView({ block: 'center' }); }
   else alert(r.error ?? 'Error al borrar el pago');
+}
+
+// ── Afiliados: licencia Pro y propuesta ───────────────────────────────────
+// Licencia Pro del afiliado: código consultant de UN canje, plan Clínica Pro,
+// 0% de comisión (no es un código de afiliado: no cuenta en KPIs).
+const esCodigoPro = (c) => c.kind === 'consultant' && c.plan_id === 'clinica_pro'
+  && Number(c.commission_pct) === 0 && c.max_redemptions === 1;
+const esCodigoAfiliado = (c) => c.kind === 'consultant' && Number(c.commission_pct) > 0;
+
+async function crearCodigoPro(id) {
+  const r = await postAPI({ action: 'create_pro_code', referrer_id: id });
+  if (!r.ok) { alert(r.error ?? 'No se pudo crear la licencia Pro.'); return; }
+  await cargar(TOKEN);
+  document.getElementById('afiliados').scrollIntoView();
+}
+
+// Abre propuesta.html con los datos reales del afiliado: su código con comisión,
+// sus condiciones, su licencia Pro y los precios de lista vigentes.
+function abrirPropuesta(id) {
+  const r = (DATOS?.referidores ?? []).find((x) => x.id === id);
+  if (!r) return;
+  const cods = (DATOS?.codigos ?? []).filter((c) => c.referrer_id === id && c.active && esCodigoAfiliado(c));
+  if (!cods.length) {
+    alert('Este afiliado no tiene un código activo con comisión. Crealo primero en «Referidos».');
+    return;
+  }
+  const c = cods[0];
+  const pro = (DATOS?.codigos ?? []).find((x) => x.referrer_id === id && esCodigoPro(x));
+  const P = DATOS?.precios ?? {};
+  const q = new URLSearchParams({
+    nombre: r.name, codigo: c.code, dias: c.trial_days, plan: c.plan_id,
+    pct: c.commission_pct ?? 20, meses: c.commission_months ?? 6, pro: pro?.code ?? '',
+    p_profesional: P.profesional ?? '', p_clinica: P.clinica ?? '', p_clinica_pro: P.clinica_pro ?? '',
+  });
+  window.open('propuesta.html?' + q.toString(), '_blank');
 }
 
 // ── Gestión de afiliados ───────────────────────────────────────────────────
