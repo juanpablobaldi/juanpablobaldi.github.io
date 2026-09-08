@@ -238,6 +238,46 @@ function tablaPlanes(d) {
     : 'Pagas + trial store + trial referido = vigentes. Las Free quedan fuera del reparto.'}</p>`;
 }
 
+// KPIs del programa de afiliados (kind 'consultant'). Revenue y comisiones
+// vienen del servidor (referrer_revenue_totals / referrer_commission_totals);
+// canjes y conversión se cuentan sobre d.canjes filtrado por tipo.
+function kpisAfiliados(d) {
+  const refs = d.referidores ?? [];
+  const activos = refs.filter((r) => r.active !== false);
+  const conPortal = activos.filter((r) => r.email).length;
+  const inactivos = refs.length - activos.length;
+  const canjes = (d.canjes ?? []).filter((c) => c.kind === 'consultant');
+  const conv = canjes.filter((c) => c.first_payment_at);
+  const pct = canjes.length ? Math.round((conv.length / canjes.length) * 100) : 0;
+  const suma = (xs, k) => (xs ?? []).reduce((s, x) => s + Number(x[k] ?? 0), 0);
+  const revenue = suma(d.revenue_afiliados, 'total');
+  const comisiones = suma(d.comisiones_acumuladas, 'total');
+  const pagado = suma(d.pagos_afiliados, 'amount');
+  const neto = revenue - comisiones;
+  const clin = (n) => `${n} clínica${n === 1 ? '' : 's'}`;
+  return `
+  <div class="grid">
+    <div class="card"><div class="card-title">Afiliados activos</div>
+      <div class="card-value">${activos.length}</div>
+      <div class="card-sub">${conPortal} con acceso al portal${inactivos ? ` · ${inactivos} inactivo${inactivos === 1 ? '' : 's'}` : ''}</div></div>
+    <div class="card"><div class="card-title">Canjes de afiliados</div>
+      <div class="card-value">${canjes.length}</div>
+      <div class="card-sub">${clin(canjes.length)} entraron con código de afiliado</div></div>
+    <div class="card"><div class="card-title">Conversión a pago</div>
+      <div class="card-value">${pct}%</div>
+      <div class="card-sub">${conv.length} de ${canjes.length} ya hicieron un pago real</div></div>
+    <div class="card"><div class="card-title">Revenue generado</div>
+      <div class="card-value">${plata(revenue)}</div>
+      <div class="card-sub">cobros reales de esas clínicas (MP y tiendas), netos de reembolsos</div></div>
+    <div class="card"><div class="card-title">Costo de comisiones</div>
+      <div class="card-value">${plata(comisiones)}</div>
+      <div class="card-sub">${plata(pagado)} ya pagado · solo comisionan los cobros directos por MP</div></div>
+    <div class="card"><div class="card-title">Revenue neto</div>
+      <div class="card-value${neto < 0 ? ' off' : ''}">${plata(neto)}</div>
+      <div class="card-sub">revenue generado menos comisiones</div></div>
+  </div>`;
+}
+
 function tablaFuentes(d) {
   const f = d.fuentes ?? {};
   const total = (f.apple ?? 0) + (f.google ?? 0) + (f.direct ?? 0) + (f.promo ?? 0);
@@ -307,6 +347,7 @@ async function cargar(token) {
     <a class="navbtn" href="#metricas">📈 Métricas</a>
     <a class="navbtn" href="#revenue">💰 Revenue</a>
     <a class="navbtn" href="#referidos">🤝 Referidos</a>
+    <a class="navbtn" href="#afiliados">🧑‍💼 Afiliados</a>
     <a class="navbtn" href="#simulador">🧮 Simulador</a>
     <a class="navbtn" href="#reembolsos">↩️ Reembolsos</a>
     <a class="navbtn" href="#pagos">💳 Pagos directos</a>
@@ -394,10 +435,10 @@ async function cargar(token) {
           <option value="consultant">👨‍💼 Consultor</option>
           <option value="clinic">🏥 Clínica que refiere</option>
         </select></div>
-      <div class="field"><label for="rf-ref">Referidor</label>
+      <div class="field"><label for="rf-ref">Afiliado</label>
         <select id="rf-ref">${(d.referidores ?? []).filter(r => r.active !== false).map(r =>
-          `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('') || '<option value="">— No hay referidores —</option>'}</select>
-        <div class="hint">Se muestra al canjear: «cortesía de …». ¿Falta? Agregalo en «Referidores» (abajo)</div></div>
+          `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('') || '<option value="">— No hay afiliados —</option>'}</select>
+        <div class="hint">Se muestra al canjear: «cortesía de …». ¿Falta? Agregalo en «Afiliados» (abajo)</div></div>
       <div class="field"><label for="rf-days">Días de regalo</label>
         <input id="rf-days" type="number" min="1" max="365" value="${(d.settings ?? {}).clinic_gift_days ?? 30}"></div>
       <div class="field"><label for="rf-plan">Plan de regalo</label>
@@ -441,9 +482,10 @@ async function cargar(token) {
   </table>
 
 
-  <h1>Referidores</h1>
+  <h1 id="afiliados">Afiliados</h1>
+  ${kpisAfiliados(d)}
   <div class="form-card" id="rr-form">
-    <h2 id="rr-title">➕ Nuevo referidor</h2>
+    <h2 id="rr-title">➕ Nuevo afiliado</h2>
     <div class="form-grid">
       <div class="field"><label for="rr-name">Nombre</label>
         <input id="rr-name" placeholder="Vanina La Sala">
@@ -469,13 +511,13 @@ async function cargar(token) {
         <input id="rr-notes" placeholder="Opcional"></div>
     </div>
     <div class="form-actions">
-      <button class="btn btn-sm" id="rr-submit" onclick="guardarReferidor()">Agregar referidor</button>
+      <button class="btn btn-sm" id="rr-submit" onclick="guardarReferidor()">Agregar afiliado</button>
       <button class="btn btn-sm btn-ghost" id="rr-cancel" style="display:none;" onclick="rrModoCrear()">Cancelar edición</button>
       <span class="form-msg" id="rr-msg"></span>
     </div>
   </div>
   <table>
-    <thead><tr><th>Referidor</th><th>Email portal</th><th>Códigos</th><th>Cobro</th><th>Datos bancarios</th><th>Notas</th><th>Acciones</th></tr></thead>
+    <thead><tr><th>Afiliado</th><th>Email portal</th><th>Códigos</th><th>Cobro</th><th>Datos bancarios</th><th>Notas</th><th>Acciones</th></tr></thead>
     <tbody>${(d.referidores ?? []).map(r => `<tr>
       <td><strong>${esc(r.name)}</strong></td>
       <td>${r.email ? `${esc(r.email)}${r.portal_last_login ? `<div style="font-size:11px;color:#999;">entró ${fecha(r.portal_last_login)}</div>` : ''}` : '<span class="warn">sin email</span>'}</td>
@@ -486,7 +528,7 @@ async function cargar(token) {
           : '—'}</td>
       <td>${esc(r.notes ?? '') || '—'}</td>
       <td><button class="rowbtn" onclick="editarReferidor('${esc(r.id)}')">✏️ Editar</button></td>
-    </tr>`).join('') || '<tr><td colspan="7" class="empty">Sin referidores — creá el primero acá arriba</td></tr>'}</tbody>
+    </tr>`).join('') || '<tr><td colspan="7" class="empty">Sin afiliados — creá el primero acá arriba</td></tr>'}</tbody>
   </table>
 
   <h1>Canjes</h1>
@@ -744,7 +786,7 @@ async function borrarPago(id) {
   else alert(r.error ?? 'Error al borrar el pago');
 }
 
-// ── Gestión de referidores ───────────────────────────────────────────────────
+// ── Gestión de afiliados ───────────────────────────────────────────────────
 function rrPayoutChange() {
   const esTransfer = $('rr-payout').value === 'transferencia';
   document.querySelectorAll('.rr-bank').forEach(el => el.style.display = esTransfer ? '' : 'none');
@@ -752,8 +794,8 @@ function rrPayoutChange() {
 
 function rrModoCrear() {
   RR_EDIT = null;
-  $('rr-title').textContent = '➕ Nuevo referidor';
-  $('rr-submit').textContent = 'Agregar referidor';
+  $('rr-title').textContent = '➕ Nuevo afiliado';
+  $('rr-submit').textContent = 'Agregar afiliado';
   $('rr-cancel').style.display = 'none';
   $('rr-msg').textContent = '';
   $('rr-name').value = ''; $('rr-email').value = ''; $('rr-payout').value = '';
@@ -800,7 +842,7 @@ async function guardarReferidor() {
   const r = await postAPI(body);
   if (r.ok) {
     msg.className = 'form-msg ok';
-    msg.textContent = RR_EDIT ? `Referidor ${r.referrer.name} actualizado.` : `Referidor ${r.referrer.name} agregado.`;
+    msg.textContent = RR_EDIT ? `Afiliado ${r.referrer.name} actualizado.` : `Afiliado ${r.referrer.name} agregado.`;
     await cargar(TOKEN);
     document.getElementById('referidos').scrollIntoView();
   } else {
