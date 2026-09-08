@@ -37,6 +37,10 @@
   .chart-tip .tip-mes { font-weight: 600; margin-bottom: 3px; color: #1a1a1a; }
   .chart-tip .tip-row { color: #666; }
   .empty { text-align: center; color: #999; }
+  .tbl-title { font-size: 15px; font-weight: 600; margin: 18px 0 0; }
+  .tbl-note { font-size: 12px; color: #666; margin: -16px 0 24px; }
+  .tbl-note.warn { color: #f59e0b; }
+  tfoot td { font-weight: 600; background: #fafafa; border-bottom: none; }
   /* login */
   #login { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
   .login-card { background: white; padding: 36px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 360px; }
@@ -162,8 +166,10 @@ function verClinicas(filtro, titulo) {
   const pago = (o) => ['apple', 'google', 'direct'].includes(o.plan_source);
   const lista = (DATOS?.orgs ?? []).filter((o) => {
     if (tipo === 'plan') return o.vigente === valor;
+    if (tipo === 'pago') return o.vigente === valor && pago(o) && !o.plan_is_trial;
     if (tipo === 'trial') return o.vigente === valor && pago(o) && o.plan_is_trial;
     if (tipo === 'promo') return o.vigente === valor && o.plan_source === 'promo';
+    if (tipo === 'nofuente') return o.vigente === valor && !pago(o) && o.plan_source !== 'promo';
     if (tipo === 'src') return o.vigente !== 'free' && o.plan_source === valor;
     return false;
   });
@@ -182,6 +188,76 @@ function verClinicas(filtro, titulo) {
       </tbody>
     </table>`;
   box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Reparto de "vigentes" por plan, con los mismos criterios que
+// dashboard-referrals: pagas = fuente de cobro real sin marca de trial,
+// trial store = esa misma fuente con la marca puesta, trial referido =
+// plan_source 'promo'. Solo se reparten los planes pagos: una cuenta Free
+// puede conservar el plan_source de una suscripción ya vencida.
+const PLANES_PAGOS = ['profesional', 'clinica', 'clinica_pro'];
+function repartoPlan(orgs, plan) {
+  const cobro = (o) => ['apple', 'google', 'direct'].includes(o.plan_source);
+  const del = (orgs ?? []).filter((o) => o.vigente === plan);
+  const pagas = del.filter((o) => cobro(o) && !o.plan_is_trial).length;
+  const trial = del.filter((o) => cobro(o) && o.plan_is_trial).length;
+  const promo = del.filter((o) => o.plan_source === 'promo').length;
+  // Resto: plan vigente sin fuente registrada (plan_source nulo). Entra en
+  // vigentes y en ninguna columna, así que se muestra en vez de perderse.
+  return { total: del.length, pagas, trial, promo, sin: del.length - pagas - trial - promo };
+}
+
+function tablaPlanes(d) {
+  const filas = PLANES_PAGOS.map((k) => ({ k, ...repartoPlan(d.orgs ?? [], k) }));
+  const t = filas.reduce((a, f) => ({
+    total: a.total + f.total, pagas: a.pagas + f.pagas,
+    trial: a.trial + f.trial, promo: a.promo + f.promo, sin: a.sin + f.sin,
+  }), { total: 0, pagas: 0, trial: 0, promo: 0, sin: 0 });
+  const huerfanas = t.sin > 0;
+  const free = (d.planes ?? {}).free ?? 0;
+  const celdaSin = (f) => huerfanas
+    ? `<td>${num(f.sin, 'nofuente:' + f.k, PLAN[f.k] + ' sin fuente registrada')}</td>` : '';
+  return `
+  <h2 class="tbl-title">Clínicas por plan</h2>
+  <table>
+    <thead><tr><th>Plan</th><th>Vigentes</th><th>Pagas</th><th>En trial store</th><th>En trial referido</th>${huerfanas ? '<th>Sin fuente</th>' : ''}</tr></thead>
+    <tbody>
+      <tr><td>Free</td><td>${num(free, 'plan:free', 'Free')}</td><td>—</td><td>—</td><td>—</td>${huerfanas ? '<td>—</td>' : ''}</tr>
+      ${filas.map((f) => `<tr>
+        <td>${PLAN[f.k]}</td>
+        <td>${num(f.total, 'plan:' + f.k, PLAN[f.k])}</td>
+        <td>${num(f.pagas, 'pago:' + f.k, PLAN[f.k] + ' con cobro real')}</td>
+        <td>${num(f.trial, 'trial:' + f.k, PLAN[f.k] + ' en trial de tienda/MP')}</td>
+        <td>${num(f.promo, 'promo:' + f.k, PLAN[f.k] + ' por promo/referido')}</td>
+        ${celdaSin(f)}</tr>`).join('')}
+    </tbody>
+    <tfoot><tr><td>Total con plan</td><td>${t.total}</td><td>${t.pagas}</td><td>${t.trial}</td><td>${t.promo}</td>${huerfanas ? `<td>${t.sin}</td>` : ''}</tr></tfoot>
+  </table>
+  <p class="tbl-note${huerfanas ? ' warn' : ''}">${huerfanas
+    ? `Pagas + trial store + trial referido no llega a vigentes: ${t.sin} clínica${t.sin === 1 ? '' : 's'} tiene${t.sin === 1 ? '' : 'n'} plan vigente sin fuente registrada.`
+    : 'Pagas + trial store + trial referido = vigentes. Las Free quedan fuera del reparto.'}</p>`;
+}
+
+function tablaFuentes(d) {
+  const f = d.fuentes ?? {};
+  const total = (f.apple ?? 0) + (f.google ?? 0) + (f.direct ?? 0) + (f.promo ?? 0);
+  const conPlan = PLANES_PAGOS.reduce((a, k) => a + repartoPlan(d.orgs ?? [], k).total, 0);
+  const cuadra = total === conPlan;
+  return `
+  <h2 class="tbl-title">Clínicas por medio de cobro</h2>
+  <table>
+    <thead><tr><th>Fuente</th><th>Vigentes</th></tr></thead>
+    <tbody>
+      <tr><td>🍎 Apple</td><td>${num(f.apple ?? 0, 'src:apple', 'Fuente Apple')}</td></tr>
+      <tr><td>🤖 Google</td><td>${num(f.google ?? 0, 'src:google', 'Fuente Google')}</td></tr>
+      <tr><td>💳 Directo (MP)</td><td>${num(f.direct ?? 0, 'src:direct', 'Fuente Mercado Pago')}</td></tr>
+      <tr><td>🎁 Promo/Referido</td><td>${num(f.promo ?? 0, 'src:promo', 'Fuente promo/referido')}</td></tr>
+    </tbody>
+    <tfoot><tr><td>Total</td><td>${total}</td></tr></tfoot>
+  </table>
+  <p class="tbl-note${cuadra ? '' : ' warn'}">${cuadra
+    ? 'Mismas clínicas que la tabla de arriba, repartidas por medio de cobro. Las Free no cuentan.'
+    : `${conPlan - total === 1 ? 'Falta 1 clínica' : `Faltan ${conPlan - total} clínicas`} respecto del total con plan: tiene${conPlan - total === 1 ? '' : 'n'} plan vigente y fuente sin registrar.`}</p>`;
 }
 
 async function entrar() {
@@ -225,7 +301,7 @@ async function cargar(token) {
   $('login').style.display = 'none';
   $('panel').style.display = 'block';
 
-  const g = d.generales, p = d.planes, f = d.fuentes, ref = d.referidos;
+  const g = d.generales, ref = d.referidos;
   $('content').innerHTML = `
   <nav class="nav">
     <a class="navbtn" href="#metricas">📈 Métricas</a>
@@ -262,15 +338,8 @@ async function cargar(token) {
       <div class="card-value">${g.conversion_pct}%</div>
       <div class="card-sub">del total de clínicas</div></div>
   </div>
-  <table>
-    <thead><tr><th>Plan</th><th>Vigentes</th><th>En trial store</th><th>En trial referido</th><th></th><th>Fuente</th><th>Vigentes</th></tr></thead>
-    <tbody>
-      <tr><td>Free</td><td>${num(p.free, 'plan:free', 'Free')}</td><td>—</td><td>—</td><td></td><td>🍎 Apple</td><td>${num(f.apple, 'src:apple', 'Fuente Apple')}</td></tr>
-      <tr><td>Profesional</td><td>${num(p.profesional, 'plan:profesional', 'Profesional')}</td><td>${num((d.planes_trial ?? {}).profesional ?? 0, 'trial:profesional', 'Profesional en trial de tienda/MP')}</td><td>${num((d.planes_trial_ref ?? {}).profesional ?? 0, 'promo:profesional', 'Profesional por promo/referido')}</td><td></td><td>🤖 Google</td><td>${num(f.google, 'src:google', 'Fuente Google')}</td></tr>
-      <tr><td>Clínica</td><td>${num(p.clinica, 'plan:clinica', 'Clínica')}</td><td>${num((d.planes_trial ?? {}).clinica ?? 0, 'trial:clinica', 'Clínica en trial de tienda/MP')}</td><td>${num((d.planes_trial_ref ?? {}).clinica ?? 0, 'promo:clinica', 'Clínica por promo/referido')}</td><td></td><td>💳 Directo (MP)</td><td>${num(f.direct, 'src:direct', 'Fuente Mercado Pago')}</td></tr>
-      <tr><td>Clínica Pro</td><td>${num(p.clinica_pro, 'plan:clinica_pro', 'Clínica Pro')}</td><td>${num((d.planes_trial ?? {}).clinica_pro ?? 0, 'trial:clinica_pro', 'Clínica Pro en trial de tienda/MP')}</td><td>${num((d.planes_trial_ref ?? {}).clinica_pro ?? 0, 'promo:clinica_pro', 'Clínica Pro por promo/referido')}</td><td></td><td>🎁 Promo/Referido</td><td>${num(f.promo, 'src:promo', 'Fuente promo/referido')}</td></tr>
-    </tbody>
-  </table>
+  ${tablaPlanes(d)}
+  ${tablaFuentes(d)}
   <div id="plan-detalle"></div>
 
   <h1 id="revenue">Revenue histórico</h1>
