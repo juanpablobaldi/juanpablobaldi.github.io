@@ -535,7 +535,10 @@ async function cargar(token) {
           : '—'}</td>
       <td>${esc(r.notes ?? '') || '—'}</td>
       <td style="white-space:nowrap;"><button class="rowbtn" onclick="editarReferidor('${esc(r.id)}')">✏️ Editar</button>
-        <button class="rowbtn" onclick="abrirPropuesta('${esc(r.id)}')">📄 Propuesta</button></td>
+        ${(() => { const cods = (d.codigos ?? []).filter(c => c.referrer_id === r.id && c.active && esCodigoAfiliado(c));
+          return cods.length > 1
+            ? cods.map(c => `<button class="rowbtn" onclick="abrirPropuesta('${esc(r.id)}', '${esc(c.code)}')">📄 ${esc(c.code)}</button>`).join(' ')
+            : `<button class="rowbtn" onclick="abrirPropuesta('${esc(r.id)}')">📄 Propuesta</button>`; })()}</td>
     </tr>`).join('') || '<tr><td colspan="8" class="empty">Sin afiliados — creá el primero acá arriba</td></tr>'}</tbody>
   </table>
 
@@ -810,7 +813,7 @@ async function crearCodigoPro(id) {
 
 // Abre propuesta.html con los datos reales del afiliado: su código con comisión,
 // sus condiciones, su licencia Pro y los precios de lista vigentes.
-function abrirPropuesta(id) {
+function abrirPropuesta(id, code) {
   const r = (DATOS?.referidores ?? []).find((x) => x.id === id);
   if (!r) return;
   const cods = (DATOS?.codigos ?? []).filter((c) => c.referrer_id === id && c.active && esCodigoAfiliado(c));
@@ -818,7 +821,10 @@ function abrirPropuesta(id) {
     alert('Este afiliado no tiene un código activo con comisión. Crealo primero en «Referidos».');
     return;
   }
-  const c = cods[0];
+  // Con varios códigos la tabla muestra un botón por código y pasa cuál;
+  // sin `code` solo llegamos acá cuando hay uno.
+  const c = code ? cods.find((x) => x.code === code) : (cods.length === 1 ? cods[0] : null);
+  if (!c) { alert('Este afiliado tiene varios códigos: elegí con qué código armar la propuesta.'); return; }
   const pro = (DATOS?.codigos ?? []).find((x) => x.referrer_id === id && esCodigoPro(x));
   const P = DATOS?.precios ?? {};
   const q = new URLSearchParams({
