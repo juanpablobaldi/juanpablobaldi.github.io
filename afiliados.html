@@ -198,7 +198,7 @@
   <h2>Comisiones generadas</h2>
   <p class="sec-sub">Un renglón por cada cobro real a un referido tuyo dentro de tu período de comisión.</p>
   <div class="tbl-card"><div class="tbl-scroll"><table id="tbl-comms"></table></div></div>
-  <p class="note">Las comisiones se calculan sobre el precio de lista en pesos de cada plan, pague la clínica por Mercado Pago o por App Store / Google Play, y se liquidan en pesos.</p>
+  <p class="note">Las comisiones se calculan sobre el precio de lista en pesos de cada plan, pague la clínica por Mercado Pago o por App Store / Google Play. Se liquidan en pesos una vez por mes, a fin de mes. Si una clínica pide un reembolso o hace un contracargo, ese mes se descuenta.</p>
 
   <h2>Tus cobros</h2>
   <p class="sec-sub">Los pagos de comisiones que ya te hicimos, y lo que está pendiente de liquidar.</p>
@@ -221,7 +221,7 @@ const fecha = (d) => {
   const dt = /^\d{4}-\d{2}-\d{2}$/.test(String(d)) ? new Date(d + 'T12:00:00') : new Date(d);
   return dt.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
 };
-const plata = (n) => '$' + Math.round(Number(n)).toLocaleString('es-AR');
+const plata = (n) => (Number(n) < 0 ? '−' : '') + '$' + Math.abs(Math.round(Number(n))).toLocaleString('es-AR');
 const PLAN_NOMBRE = { profesional: 'Profesional', clinica: 'Clínica', clinica_pro: 'Clínica Pro' };
 
 let EMAIL = '';
@@ -410,7 +410,7 @@ function render(d) {
     <tbody>${(d.comisiones ?? []).map(c => `<tr>
       <td>${fecha(c.created_at)}</td>
       <td><strong>${esc(c.clinica)}</strong></td>
-      <td>${esc(PLAN_NOMBRE[c.plan_id] ?? c.plan_id)}</td>
+      <td>${esc(PLAN_NOMBRE[c.plan_id] ?? c.plan_id)}${Number(c.comision) < 0 ? ' <span style="color:#b45309;font-size:12px;">↩ reembolso</span>' : ''}</td>
       <td class="num">${plata(c.precio)}</td>
       <td class="num">${c.pct}%</td>
       <td class="num"><strong>${plata(c.comision)}</strong></td>
