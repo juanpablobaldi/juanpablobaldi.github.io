@@ -1122,6 +1122,7 @@ function abrirPropuesta(id, code) {
     pct: c.commission_pct ?? 20, meses: c.commission_months ?? 6, pro: pro?.code ?? '',
     p_profesional: P.profesional ?? '', p_clinica: P.clinica ?? '', p_clinica_pro: P.clinica_pro ?? '',
     u_profesional: U.profesional ?? '', u_clinica: U.clinica ?? '', u_clinica_pro: U.clinica_pro ?? '', // USD de tienda
+    t: Date.now(), // URL única por click: el navegador no reutiliza una propuesta.html vieja de su caché
   });
   window.open('propuesta.html?' + q.toString(), '_blank');
 }
