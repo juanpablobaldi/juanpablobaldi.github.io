@@ -84,6 +84,24 @@
   .sim-cur button.on { border-color: #0066cc; background: #eaf2ff; color: #0066cc; font-weight: 600; }
   #plan-detalle { margin-top: 10px; }
   #plan-detalle h2 { display: flex; justify-content: space-between; align-items: center; font-size: 15px; margin: 8px 0; }
+  /* páginas y solapas */
+  .navbtn.on { background: #0066cc; border-color: #0066cc; color: white; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid #ddd; margin: 14px 0 4px; overflow-x: auto; }
+  .tab { padding: 10px 14px; font-size: 13px; color: #666; text-decoration: none; white-space: nowrap;
+         border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab:hover { color: #0066cc; }
+  .tab.on { color: #0066cc; border-bottom-color: #0066cc; font-weight: 600; }
+  .tab .cnt { background: #f59e0b; color: white; border-radius: 10px; padding: 1px 7px; font-size: 11px; margin-left: 6px; font-weight: 600; }
+  /* clientes */
+  .muted { color: #999; }
+  .sub { display: block; font-size: 11px; color: #999; font-weight: 400; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 12px; background: #eef2f7; vertical-align: 3px; }
+  .tbl-scroll { overflow-x: auto; }
+  tr.click { cursor: pointer; }
+  tr.click:hover td { background: #f7faff; }
+  .cl-tools { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .cl-tools input, .cl-tools select { width: auto; margin: 0; padding: 9px 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; background: white; }
+  .cl-tools input { flex: 1 1 240px; }
 </style>
 </head>
 <body>
@@ -180,7 +198,7 @@ function verClinicas(filtro, titulo) {
     <table>
       <thead><tr><th>Clínica</th><th>Plan vigente</th><th>Fuente</th><th>Trial</th><th>Vence</th><th>Creada</th></tr></thead>
       <tbody>${lista.map((o) => `<tr>
-        <td>${esc(o.name)}</td><td>${PLAN[o.vigente] ?? esc(o.vigente)}</td>
+        <td><a href="#/clientes/clinicas/${esc(o.id)}" style="color:#0066cc; text-decoration:none;">${esc(o.name)}</a></td><td>${PLAN[o.vigente] ?? esc(o.vigente)}</td>
         <td>${o.vigente === 'free' ? '—' : (FUENTE[o.plan_source] ?? esc(o.plan_source))}</td>
         <td>${o.vigente !== 'free' && o.plan_is_trial ? 'sí' : '—'}</td>
         <td>${o.vigente !== 'free' && o.plan_expires_at ? fecha(o.plan_expires_at) : '—'}</td>
@@ -338,24 +356,67 @@ let TOKEN = null, DATOS = null, RF_EDIT = null, RR_EDIT = null; // *_EDIT: en ed
 async function cargar(token) {
   const r = await fetch(API, { headers: { 'Authorization': 'Bearer ' + token } });
   if (r.status === 401) { sesionVencida(); return; }
-  if (r.status === 403) { $('login-err').textContent = 'Acceso restringido al administrador.'; return; }
+  if (r.status === 403) {
+    sessionStorage.removeItem('panel_token'); // un token válido pero no-admin no se conserva
+    $('login-err').textContent = 'Acceso restringido al administrador.';
+    return;
+  }
   const d = await r.json();
+  if (!r.ok || !d.generales) {
+    const aviso = d.error ?? 'No se pudieron cargar los datos.';
+    if (DATOS) alert(aviso); else $('login-err').textContent = aviso;
+    return;
+  }
   TOKEN = token; DATOS = d; RF_EDIT = null; RR_EDIT = null;
 
   $('login').style.display = 'none';
   $('panel').style.display = 'block';
+  render();
+}
 
-  const g = d.generales, ref = d.referidos;
+// ── Páginas y solapas ────────────────────────────────────────────────────────
+// Una sola página HTML con ruteo por hash (#/pagina/solapa[/extra]). Todo pasa
+// por render(), que solo corre con DATOS cargados, y DATOS solo existe después
+// de que la Edge Function validó el token del admin: ninguna ruta pinta nada
+// sin login, y el HTML en sí no contiene datos.
+const PAGINAS = [
+  { id: 'resumen', label: '📈 Resumen', tabs: [['metricas', 'Métricas'], ['revenue', 'Revenue']] },
+  { id: 'clientes', label: '👥 Clientes', tabs: [['clinicas', 'Clínicas'], ['atencion', 'Requieren atención']] },
+  { id: 'referidos', label: '🤝 Referidos', tabs: [['codigos', 'Códigos'], ['canjes', 'Canjes'], ['variables', 'Variables del programa']] },
+  { id: 'afiliados', label: '🧑‍💼 Afiliados', tabs: [['afiliados', 'Afiliados'], ['liquidacion', 'Liquidación y pagos'], ['simulador', 'Simulador']] },
+  { id: 'pagos', label: '💳 Pagos', tabs: [['eventos', 'Pagos directos'], ['reembolsos', 'Reembolsos y bajas']] },
+];
+// Anclas del panel viejo (una sola página larga) → ruta nueva
+const RUTAS_VIEJAS = { metricas: 'resumen/metricas', revenue: 'resumen/revenue',
+  simulador: 'afiliados/simulador', reembolsos: 'pagos/reembolsos' };
+
+function ruta() {
+  let h = location.hash.replace(/^#\/?/, '');
+  if (RUTAS_VIEJAS[h]) h = RUTAS_VIEJAS[h];
+  const [p, t, extra] = h.split('/');
+  const pag = PAGINAS.find((x) => x.id === p) ?? PAGINAS[0];
+  const tab = (pag.tabs.find((x) => x[0] === t) ?? pag.tabs[0])[0];
+  return { pag, tab, extra: extra || null };
+}
+
+function render() {
+  if (!DATOS) return; // sin login no hay nada que pintar
+  const d = DATOS, { pag, tab, extra } = ruta(), key = pag.id + '/' + tab;
+  const cnt = { 'clientes/atencion': clinicasEnAtencion(d) };
   $('content').innerHTML = `
-  <nav class="nav">
-    <a class="navbtn" href="#metricas">📈 Métricas</a>
-    <a class="navbtn" href="#revenue">💰 Revenue</a>
-    <a class="navbtn" href="#referidos">🤝 Referidos</a>
-    <a class="navbtn" href="#afiliados">🧑‍💼 Afiliados</a>
-    <a class="navbtn" href="#simulador">🧮 Simulador</a>
-    <a class="navbtn" href="#reembolsos">↩️ Reembolsos</a>
-    <a class="navbtn" href="#pagos">💳 Pagos directos</a>
-  </nav>
+  <nav class="nav">${PAGINAS.map((p) =>
+    `<a class="navbtn${p.id === pag.id ? ' on' : ''}" href="#/${p.id}">${p.label}</a>`).join('')}</nav>
+  <div class="tabs">${pag.tabs.map(([id, label]) => {
+    const n = cnt[pag.id + '/' + id];
+    return `<a class="tab${id === tab ? ' on' : ''}" href="#/${pag.id}/${id}">${label}${n ? `<span class="cnt">${n}</span>` : ''}</a>`;
+  }).join('')}</div>
+  <div id="vista">${VISTAS[key](d, extra)}</div>`;
+  DESPUES[key]?.(d, extra);
+}
+window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
+
+const VISTAS = {
+  'resumen/metricas': (d) => { const g = d.generales; return `
   <div class="ext-links">
     <a href="https://appstoreconnect.apple.com/analytics/app/d30/6790166290/overview" target="_blank" rel="noopener">🍎 App Store · Analytics</a>
     <a href="https://appstoreconnect.apple.com/trends" target="_blank" rel="noopener">🍎 App Store · Ventas y tendencias</a>
@@ -385,24 +446,13 @@ async function cargar(token) {
   </div>
   ${tablaPlanes(d)}
   ${tablaFuentes(d)}
-  <div id="plan-detalle"></div>
-
-  <h1 id="revenue">Revenue histórico</h1>
-  ${revenueSection(d.revenue ?? [])}
-
-  <h1 id="simulador">Simulador de comisiones</h1>
-  <p style="color:#666; font-size:13px; margin:0 0 6px;">Para mostrarle a un potencial afiliado: cambiá comisión, meses y cantidad de referidos, y la tabla calcula por plan sobre los precios de lista vigentes.</p>
-  <div class="sim-inputs">
-    <div><label for="sim-pct">Comisión</label><div class="sim-field"><input type="number" id="sim-pct" min="1" max="100" step="1" value="40" oninput="simular()"><span class="sim-unit">%</span></div></div>
-    <div><label for="sim-meses">Durante</label><div class="sim-field"><input type="number" id="sim-meses" min="1" max="60" step="1" value="12" oninput="simular()"><span class="sim-unit">meses</span></div></div>
-    <div><label for="sim-refs">Referidos que pagan</label><div class="sim-field"><input type="number" id="sim-refs" min="1" max="1000" step="1" value="5" oninput="simular()"><span class="sim-unit">clínicas</span></div></div>
-    <div><label>Moneda</label><div class="sim-cur">
-      <button type="button" id="sim-cur-ars" class="on" onclick="setMoneda('ARS')">🇦🇷 ARS</button>
-      <button type="button" id="sim-cur-usd" onclick="setMoneda('USD')">🇺🇸 USD</button></div></div>
-  </div>
-  <table id="tbl-sim"></table>
-  <p id="sim-note" style="color:#999; font-size:12px; margin-top:6px;"></p>
-
+  <div id="plan-detalle"></div>`; },
+  'resumen/revenue': (d) => `
+  <h1>Revenue histórico</h1>
+  ${revenueSection(d.revenue ?? [])}`,
+  'clientes/clinicas': (d, extra) => extra ? fichaCliente(d, extra) : vistaClientes(d),
+  'clientes/atencion': (d) => vistaAtencion(d),
+  'referidos/codigos': (d) => { const ref = d.referidos; return `
   <h1 id="referidos">Referidos</h1>
   <div class="grid">
     <div class="card"><div class="card-title">Códigos activos</div><div class="card-value">${ref.codigos_activos}</div></div>
@@ -411,23 +461,6 @@ async function cargar(token) {
     <div class="card"><div class="card-title">Comisiones 30d</div><div class="card-value">${plata(ref.comisiones_30d)}</div>
       <div class="card-sub">a liquidar a consultores</div></div>
   </div>
-
-  <div class="form-card" id="settings-form">
-    <h2>⚙️ Variables del programa</h2>
-    <div class="form-grid">
-      <div class="field"><label for="st-gift">Días de regalo (códigos automáticos)</label>
-        <input id="st-gift" type="number" min="1" max="365" value="${(d.settings ?? {}).clinic_gift_days ?? 30}">
-        <div class="hint">Lo que recibe la clínica referida. Aplica a los códigos autogenerados por la app (existentes y futuros); los creados a mano conservan sus días</div></div>
-      <div class="field"><label for="st-reward">Días de premio al referidor</label>
-        <input id="st-reward" type="number" min="1" max="365" value="${(d.settings ?? {}).clinic_reward_days ?? 30}">
-        <div class="hint">Lo que gana la clínica que refiere cuando su referido hace el primer pago (por cualquier canal)</div></div>
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-sm" onclick="guardarSettings()">Guardar variables</button>
-      <span class="form-msg" id="st-msg"></span>
-    </div>
-  </div>
-
   <div class="form-card" id="ref-form">
     <h2 id="rf-title">➕ Crear código</h2>
     <div class="form-grid">
@@ -442,7 +475,7 @@ async function cargar(token) {
       <div class="field"><label for="rf-ref">Afiliado</label>
         <select id="rf-ref">${(d.referidores ?? []).filter(r => r.active !== false).map(r =>
           `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('') || '<option value="">— No hay afiliados —</option>'}</select>
-        <div class="hint">Se muestra al canjear: «cortesía de …». ¿Falta? Agregalo en «Afiliados» (abajo)</div></div>
+        <div class="hint">Se muestra al canjear: «cortesía de …». ¿Falta? Agregalo en la página «Afiliados»</div></div>
       <div class="field"><label for="rf-days">Días de regalo</label>
         <input id="rf-days" type="number" min="1" max="365" value="${(d.settings ?? {}).clinic_gift_days ?? 30}"></div>
       <div class="field"><label for="rf-plan">Plan de regalo</label>
@@ -483,9 +516,47 @@ async function cargar(token) {
       <td><button class="rowbtn" onclick="editarCodigo('${esc(c.code)}')">✏️ Editar</button>
           <button class="rowbtn ${c.active ? 'danger' : ''}" onclick="toggleCodigo('${esc(c.code)}', ${c.active ? 'false' : 'true'})">${c.active ? 'Desactivar' : 'Reactivar'}</button></td>
     </tr>`).join('') || '<tr><td colspan="10" class="empty">Sin códigos creados</td></tr>'}</tbody>
+  </table>`; },
+  'referidos/canjes': (d) => `
+  <h1>Canjes</h1>
+  <table>
+    <thead><tr><th>Código</th><th>Referidor</th><th>Clínica referida</th><th>Plan</th><th>Canjeado</th><th>1er pago</th><th>Premio</th></tr></thead>
+    <tbody>${d.canjes.map(r => `<tr>
+      <td><strong>${esc(r.code)}</strong></td><td>${esc(r.referidor)}</td>
+      <td>${esc(r.clinica)}</td><td>${esc(r.plan)}</td>
+      <td>${fecha(r.redeemed_at)}</td><td>${fecha(r.first_payment_at)}</td>
+      <td>${r.kind !== 'clinic' ? 'n/a'
+          : r.referrer_rewarded_at ? '<span class="ok">✓ Aplicado</span>'
+          : r.first_payment_at ? '<span class="warn">⏳ Pendiente</span>' : '—'}</td>
+    </tr>`).join('') || '<tr><td colspan="7" class="empty">Todavía no hay canjes</td></tr>'}</tbody>
   </table>
-
-
+  ${d.premios_pendientes.length ? `
+  <h1>⏳ Premios pendientes (resolver a mano)</h1>
+  <table>
+    <thead><tr><th>Código</th><th>Referidor</th><th>Referido que pagó</th><th>Fecha</th></tr></thead>
+    <tbody>${d.premios_pendientes.map(r => `<tr>
+      <td><strong>${esc(r.code)}</strong></td><td>${esc(r.referidor)}</td>
+      <td>${esc(r.referido)}</td><td>${fecha(r.first_payment_at)}</td>
+    </tr>`).join('')}</tbody>
+  </table>` : ''}`,
+  'referidos/variables': (d) => `
+  <h1>Variables del programa</h1>
+  <div class="form-card" id="settings-form">
+    <h2>⚙️ Variables del programa</h2>
+    <div class="form-grid">
+      <div class="field"><label for="st-gift">Días de regalo (códigos automáticos)</label>
+        <input id="st-gift" type="number" min="1" max="365" value="${(d.settings ?? {}).clinic_gift_days ?? 30}">
+        <div class="hint">Lo que recibe la clínica referida. Aplica a los códigos autogenerados por la app (existentes y futuros); los creados a mano conservan sus días</div></div>
+      <div class="field"><label for="st-reward">Días de premio al referidor</label>
+        <input id="st-reward" type="number" min="1" max="365" value="${(d.settings ?? {}).clinic_reward_days ?? 30}">
+        <div class="hint">Lo que gana la clínica que refiere cuando su referido hace el primer pago (por cualquier canal)</div></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-sm" onclick="guardarSettings()">Guardar variables</button>
+      <span class="form-msg" id="st-msg"></span>
+    </div>
+  </div>`,
+  'afiliados/afiliados': (d) => `
   <h1 id="afiliados">Afiliados</h1>
   ${kpisAfiliados(d)}
   <div class="form-card" id="rr-form">
@@ -540,21 +611,8 @@ async function cargar(token) {
             ? cods.map(c => `<button class="rowbtn" onclick="abrirPropuesta('${esc(r.id)}', '${esc(c.code)}')">📄 ${esc(c.code)}</button>`).join(' ')
             : `<button class="rowbtn" onclick="abrirPropuesta('${esc(r.id)}')">📄 Propuesta</button>`; })()}</td>
     </tr>`).join('') || '<tr><td colspan="8" class="empty">Sin afiliados — creá el primero acá arriba</td></tr>'}</tbody>
-  </table>
-
-  <h1>Canjes</h1>
-  <table>
-    <thead><tr><th>Código</th><th>Referidor</th><th>Clínica referida</th><th>Plan</th><th>Canjeado</th><th>1er pago</th><th>Premio</th></tr></thead>
-    <tbody>${d.canjes.map(r => `<tr>
-      <td><strong>${esc(r.code)}</strong></td><td>${esc(r.referidor)}</td>
-      <td>${esc(r.clinica)}</td><td>${esc(r.plan)}</td>
-      <td>${fecha(r.redeemed_at)}</td><td>${fecha(r.first_payment_at)}</td>
-      <td>${r.kind !== 'clinic' ? 'n/a'
-          : r.referrer_rewarded_at ? '<span class="ok">✓ Aplicado</span>'
-          : r.first_payment_at ? '<span class="warn">⏳ Pendiente</span>' : '—'}</td>
-    </tr>`).join('') || '<tr><td colspan="7" class="empty">Todavía no hay canjes</td></tr>'}</tbody>
-  </table>
-
+  </table>`,
+  'afiliados/liquidacion': (d) => `
   <h1>Liquidación consultores (últimos 30 días)</h1>
   <table>
     <thead><tr><th>Código</th><th>Consultor</th><th>Referidos que pagaron</th><th>Comisión</th><th>Cobro</th></tr></thead>
@@ -566,7 +624,6 @@ async function cargar(token) {
           : c.payout_method === 'efectivo' ? '💵 Efectivo' : '—'}</td>
     </tr>`).join('') || '<tr><td colspan="5" class="empty">Sin comisiones este período</td></tr>'}</tbody>
   </table>
-
   <h1>💸 Pagos a afiliados</h1>
   <table>
     <thead><tr><th>Afiliado</th><th>Comisión acumulada</th><th>Pagado</th><th>Saldo pendiente</th></tr></thead>
@@ -614,29 +671,21 @@ async function cargar(token) {
       <td>${esc(p.notes ?? '') || '—'}</td>
       <td><button class="rowbtn danger" onclick="borrarPago('${esc(p.id)}')">🗑 Borrar</button></td>
     </tr>`).join('') || '<tr><td colspan="6" class="empty">Sin pagos registrados</td></tr>'}</tbody>
-  </table>
-
-  ${d.premios_pendientes.length ? `
-  <h1>⏳ Premios pendientes (resolver a mano)</h1>
-  <table>
-    <thead><tr><th>Código</th><th>Referidor</th><th>Referido que pagó</th><th>Fecha</th></tr></thead>
-    <tbody>${d.premios_pendientes.map(r => `<tr>
-      <td><strong>${esc(r.code)}</strong></td><td>${esc(r.referidor)}</td>
-      <td>${esc(r.referido)}</td><td>${fecha(r.first_payment_at)}</td>
-    </tr>`).join('')}</tbody>
-  </table>` : ''}
-
-  <h1 id="reembolsos">Reembolsos y bajas</h1>
-  <table>
-    <thead><tr><th>Fecha</th><th>Tipo</th><th>Email</th><th>Plan</th><th>Detalle</th></tr></thead>
-    <tbody>${(d.reembolsos ?? []).map(e => `<tr>
-      <td style="white-space:nowrap;">${fechaHora(e.created_at)}</td>
-      <td class="${e.action === 'revoked' ? 'off' : 'warn'}">${e.action === 'revoked' ? '↩️ Reembolso / baja' : '⏸ Cancelación'}</td>
-      <td>${esc(e.payer_email)}</td><td>${esc(e.plan_id)}</td>
-      <td style="max-width:340px;">${esc(e.detail)}</td>
-    </tr>`).join('') || '<tr><td colspan="5" class="empty">Sin reembolsos ni bajas registrados</td></tr>'}</tbody>
-  </table>
-
+  </table>`,
+  'afiliados/simulador': () => `
+  <h1 id="simulador">Simulador de comisiones</h1>
+  <p style="color:#666; font-size:13px; margin:0 0 6px;">Para mostrarle a un potencial afiliado: cambiá comisión, meses y cantidad de referidos, y la tabla calcula por plan sobre los precios de lista vigentes.</p>
+  <div class="sim-inputs">
+    <div><label for="sim-pct">Comisión</label><div class="sim-field"><input type="number" id="sim-pct" min="1" max="100" step="1" value="40" oninput="simular()"><span class="sim-unit">%</span></div></div>
+    <div><label for="sim-meses">Durante</label><div class="sim-field"><input type="number" id="sim-meses" min="1" max="60" step="1" value="12" oninput="simular()"><span class="sim-unit">meses</span></div></div>
+    <div><label for="sim-refs">Referidos que pagan</label><div class="sim-field"><input type="number" id="sim-refs" min="1" max="1000" step="1" value="5" oninput="simular()"><span class="sim-unit">clínicas</span></div></div>
+    <div><label>Moneda</label><div class="sim-cur">
+      <button type="button" id="sim-cur-ars" class="on" onclick="setMoneda('ARS')">🇦🇷 ARS</button>
+      <button type="button" id="sim-cur-usd" onclick="setMoneda('USD')">🇺🇸 USD</button></div></div>
+  </div>
+  <table id="tbl-sim"></table>
+  <p id="sim-note" style="color:#999; font-size:12px; margin-top:6px;"></p>`,
+  'pagos/eventos': (d) => `
   <h1 id="pagos">Últimos eventos de pago directo</h1>
   <table>
     <thead><tr><th>Fecha</th><th>Acción</th><th>Email</th><th>Plan</th><th>Detalle</th></tr></thead>
@@ -646,9 +695,252 @@ async function cargar(token) {
       <td>${esc(e.payer_email)}</td><td>${esc(e.plan_id)}</td>
       <td style="max-width:340px;">${esc(e.detail)}</td>
     </tr>`).join('') || '<tr><td colspan="5" class="empty">Sin eventos</td></tr>'}</tbody>
-  </table>`;
-  wireRevenueHover();
-  simular(); // tabla del simulador de comisiones (precios de lista ya cargados en DATOS)
+  </table>`,
+  'pagos/reembolsos': (d) => `
+  <h1 id="reembolsos">Reembolsos y bajas</h1>
+  <table>
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>Email</th><th>Plan</th><th>Detalle</th></tr></thead>
+    <tbody>${(d.reembolsos ?? []).map(e => `<tr>
+      <td style="white-space:nowrap;">${fechaHora(e.created_at)}</td>
+      <td class="${e.action === 'revoked' ? 'off' : 'warn'}">${e.action === 'revoked' ? '↩️ Reembolso / baja' : '⏸ Cancelación'}</td>
+      <td>${esc(e.payer_email)}</td><td>${esc(e.plan_id)}</td>
+      <td style="max-width:340px;">${esc(e.detail)}</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="empty">Sin reembolsos ni bajas registrados</td></tr>'}</tbody>
+  </table>`,
+};
+// Lo que necesita el DOM ya pintado
+const DESPUES = {
+  'resumen/revenue': () => wireRevenueHover(),
+  'afiliados/simulador': () => simular(),
+  'clientes/clinicas': (d, extra) => extra ? cargarFicha(extra) : pintarClientes(),
+};
+
+// ── Clientes ─────────────────────────────────────────────────────────────────
+// d.clientes = una fila por clínica (RPC admin_clients, mig 064) con `vigente`
+// y `mrr` ya resueltos por la función. La ficha pide el detalle a demanda
+// (GET ?client=<id>): equipo, cobros y referidos.
+const DIA = 86400000;
+const RTF = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });
+function hace(d) {
+  if (!d) return '—';
+  const dias = Math.round((new Date(d).getTime() - Date.now()) / DIA);
+  if (Math.abs(dias) < 31) return RTF.format(dias, 'day');
+  if (Math.abs(dias) < 365) return RTF.format(Math.round(dias / 30), 'month');
+  return RTF.format(Math.round(dias / 365), 'year');
+}
+const ms = (d) => (d ? new Date(d).getTime() : 0);
+// Actividad = lo último que pasó: contenido creado o un login de alguien del equipo
+const ultimaActividad = (c) => (Math.max(ms(c.last_content_at), ms(c.last_sign_in_at)) || null);
+const conCobro = (c) => ['apple', 'google', 'direct'].includes(c.plan_source);
+
+function estadoCliente(c) {
+  if (c.deletion_purge_at) return { k: 'baja', label: '🗑 Baja agendada', cls: 'off' };
+  if (c.deactivated_at) return { k: 'pausada', label: '⏸ Pausada', cls: 'warn' };
+  if (c.vigente !== 'free' && conCobro(c) && !c.plan_is_trial) return { k: 'paga', label: '✓ Paga', cls: 'ok' };
+  if (c.vigente !== 'free' && conCobro(c)) return { k: 'trial', label: '⏳ En trial', cls: 'warn' };
+  if (c.vigente !== 'free' && c.plan_source === 'promo') return { k: 'cortesia', label: '🎁 Cortesía', cls: '' };
+  if (c.vigente !== 'free') return { k: 'sinfuente', label: 'Plan sin fuente', cls: 'warn' };
+  if (c.plan_id && c.plan_id !== 'free') return { k: 'vencida', label: 'Plan vencido', cls: 'off' };
+  return { k: 'free', label: 'Free', cls: 'muted' };
+}
+const ESTADOS = [['paga', 'Pagan'], ['trial', 'En trial'], ['cortesia', 'Cortesía'], ['free', 'Free'],
+  ['vencida', 'Plan vencido'], ['pausada', 'Pausadas'], ['baja', 'Baja agendada']];
+
+// Filtros del listado: sobreviven a los re-render y al ir y volver de una ficha
+const CL = { q: '', plan: '', estado: '', orden: 'alta' };
+const ORDENES = {
+  alta: ['Alta más reciente', (a, b) => ms(b.created_at) - ms(a.created_at)],
+  actividad: ['Última actividad', (a, b) => (ultimaActividad(b) ?? 0) - (ultimaActividad(a) ?? 0)],
+  revenue: ['Mayor revenue', (a, b) => b.revenue - a.revenue],
+  uso: ['Más fotos', (a, b) => (b.cases + b.loose_photos) - (a.cases + a.loose_photos)],
+  nombre: ['Nombre', (a, b) => String(a.name).localeCompare(String(b.name), 'es')],
+};
+
+function vistaClientes(d) {
+  const cs = d.clientes ?? [];
+  const pagan = cs.filter((c) => estadoCliente(c).k === 'paga');
+  const trial = cs.filter((c) => estadoCliente(c).k === 'trial');
+  const activas = cs.filter((c) => (ultimaActividad(c) ?? 0) > Date.now() - 30 * DIA);
+  const conDatos = cs.filter((c) => c.patients > 0);
+  const revenue = cs.reduce((s, c) => s + c.revenue, 0);
+  const opt = (v, label, sel) => `<option value="${v}"${v === sel ? ' selected' : ''}>${label}</option>`;
+  return `
+  <h1>Clientes</h1>
+  <div class="grid">
+    <div class="card"><div class="card-title">Clínicas</div>
+      <div class="card-value">${cs.length}</div>
+      <div class="card-sub">${conDatos.length} ya cargaron al menos un paciente</div></div>
+    <div class="card"><div class="card-title">Pagan hoy</div>
+      <div class="card-value">${pagan.length}</div>
+      <div class="card-sub">${plata(pagan.reduce((s, c) => s + c.mrr, 0))} por mes a precio de lista · ${trial.length} en trial</div></div>
+    <div class="card"><div class="card-title">Activas en 30 días</div>
+      <div class="card-value">${activas.length}</div>
+      <div class="card-sub">cargaron contenido o iniciaron sesión</div></div>
+    <div class="card"><div class="card-title">Revenue acumulado</div>
+      <div class="card-value">${plata(revenue)}</div>
+      <div class="card-sub">cobros reales de todas las clínicas, netos de reembolsos</div></div>
+  </div>
+  <div class="cl-tools">
+    <input id="cl-q" type="search" placeholder="Buscar por clínica, dueño o email" value="${esc(CL.q).replace(/"/g, '&quot;')}"
+      oninput="CL.q = this.value; pintarClientes()">
+    <select id="cl-plan" onchange="CL.plan = this.value; pintarClientes()">
+      ${opt('', 'Todos los planes', CL.plan)}${Object.entries(PLAN).map(([k, v]) => opt(k, v, CL.plan)).join('')}</select>
+    <select id="cl-estado" onchange="CL.estado = this.value; pintarClientes()">
+      ${opt('', 'Todos los estados', CL.estado)}${ESTADOS.map(([k, v]) => opt(k, v, CL.estado)).join('')}</select>
+    <select id="cl-orden" onchange="CL.orden = this.value; pintarClientes()">
+      ${Object.entries(ORDENES).map(([k, [label]]) => opt(k, label, CL.orden)).join('')}</select>
+  </div>
+  <p class="tbl-note" id="cl-count" style="margin:8px 0 0;"></p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Clínica</th><th>Plan</th><th>Estado</th><th>Equipo</th><th>Pacientes</th><th>Comparativas</th><th>Fotos sueltas</th><th>Última actividad</th><th>Revenue</th><th>Alta</th></tr></thead>
+    <tbody id="cl-tbody"></tbody>
+  </table></div>`;
+}
+
+function filaCliente(c) {
+  const e = estadoCliente(c);
+  return `<tr class="click" onclick="location.hash = '#/clientes/clinicas/${esc(c.id)}'">
+    <td><strong>${esc(c.name)}</strong><div class="sub">${esc(c.owner_email)}</div></td>
+    <td>${PLAN[c.vigente] ?? esc(c.vigente)}${c.vigente !== 'free' ? `<div class="sub">${FUENTE[c.plan_source] ?? '—'}</div>` : ''}</td>
+    <td class="${e.cls}">${e.label}</td>
+    <td>${c.members}</td><td>${c.patients}</td><td>${c.cases}</td><td>${c.loose_photos}</td>
+    <td>${hace(ultimaActividad(c))}</td>
+    <td>${c.revenue ? plata(c.revenue) : '—'}</td>
+    <td>${fecha(c.created_at)}</td></tr>`;
+}
+
+function pintarClientes() {
+  const tb = $('cl-tbody');
+  if (!tb) return;
+  const q = CL.q.trim().toLowerCase();
+  const lista = (DATOS?.clientes ?? []).filter((c) =>
+    (!q || [c.name, c.owner_name, c.owner_email].some((x) => String(x ?? '').toLowerCase().includes(q)))
+    && (!CL.plan || c.vigente === CL.plan)
+    && (!CL.estado || estadoCliente(c).k === CL.estado)).sort(ORDENES[CL.orden][1]);
+  tb.innerHTML = lista.map(filaCliente).join('')
+    || '<tr><td colspan="10" class="empty">Ninguna clínica coincide con el filtro</td></tr>';
+  const total = (DATOS?.clientes ?? []).length;
+  $('cl-count').textContent = lista.length === total
+    ? `${total} clínicas. Tocá una fila para abrir su ficha.`
+    : `${lista.length} de ${total} clínicas.`;
+}
+
+// ── Requieren atención ───────────────────────────────────────────────────────
+// Cuatro listas accionables; una clínica puede caer en más de una.
+function listasAtencion(d) {
+  const cs = d.clientes ?? [], ahora = Date.now();
+  return [
+    { titulo: '⏳ Plan por vencer en 7 días',
+      nota: 'Trials y cortesías que se terminan: buen momento para escribirles antes de que pasen a Free.',
+      filas: cs.filter((c) => c.vigente !== 'free' && c.plan_expires_at
+        && ms(c.plan_expires_at) > ahora && ms(c.plan_expires_at) < ahora + 7 * DIA && !(conCobro(c) && !c.plan_is_trial))
+        .sort((a, b) => ms(a.plan_expires_at) - ms(b.plan_expires_at)),
+      extra: ['Vence', (c) => `${fecha(c.plan_expires_at)} · ${hace(c.plan_expires_at)}`] },
+    { titulo: '💤 Pagan y no usan la app hace 30 días',
+      nota: 'Riesgo de baja: están pagando sin cargar contenido ni iniciar sesión.',
+      filas: cs.filter((c) => estadoCliente(c).k === 'paga' && (ultimaActividad(c) ?? 0) < ahora - 30 * DIA),
+      extra: ['Última actividad', (c) => hace(ultimaActividad(c))] },
+    { titulo: '🚪 Pausadas o con baja agendada',
+      nota: 'La pausa es reversible; la baja se ejecuta sola en la fecha indicada si no la cancelan.',
+      filas: cs.filter((c) => c.deactivated_at || c.deletion_purge_at),
+      extra: ['Situación', (c) => c.deletion_purge_at ? `Se elimina el ${fecha(c.deletion_purge_at)}` : `Pausada el ${fecha(c.deactivated_at)}`] },
+    { titulo: '🌱 Se registraron y no cargaron ningún paciente',
+      nota: 'Altas de los últimos 30 días con más de 3 días de antigüedad y sin pacientes: no llegaron a probar la app.',
+      filas: cs.filter((c) => c.patients === 0 && ms(c.created_at) < ahora - 3 * DIA && ms(c.created_at) > ahora - 30 * DIA)
+        .sort((a, b) => ms(b.created_at) - ms(a.created_at)),
+      extra: ['Alta', (c) => `${fecha(c.created_at)} · ${hace(c.created_at)}`] },
+  ];
+}
+const clinicasEnAtencion = (d) => new Set(listasAtencion(d).flatMap((l) => l.filas.map((c) => c.id))).size;
+
+function vistaAtencion(d) {
+  return `<h1>Requieren atención</h1>` + listasAtencion(d).map((l) => `
+  <h2 class="tbl-title">${l.titulo} · ${l.filas.length}</h2>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Clínica</th><th>Contacto</th><th>Plan</th><th>${l.extra[0]}</th></tr></thead>
+    <tbody>${l.filas.map((c) => `<tr class="click" onclick="location.hash = '#/clientes/clinicas/${esc(c.id)}'">
+      <td><strong>${esc(c.name)}</strong></td>
+      <td>${esc(c.owner_name ?? '')} <span class="sub" style="display:inline;">${esc(c.owner_email)}</span></td>
+      <td>${PLAN[c.vigente] ?? esc(c.vigente)}</td><td>${l.extra[1](c)}</td></tr>`).join('')
+      || '<tr><td colspan="4" class="empty">Ninguna clínica en esta situación</td></tr>'}</tbody>
+  </table></div>
+  <p class="tbl-note">${l.nota}</p>`).join('');
+}
+
+// ── Ficha de una clínica ─────────────────────────────────────────────────────
+function fichaCliente(d, id) {
+  const c = (d.clientes ?? []).find((x) => x.id === id);
+  if (!c) return `<p style="margin:20px 0;"><a href="#/clientes/clinicas">← Volver a Clientes</a></p>
+    <p class="empty">No existe una clínica con ese identificador.</p>`;
+  const e = estadoCliente(c);
+  return `
+  <p style="margin:14px 0 0;"><a href="#/clientes/clinicas" style="color:#0066cc; font-size:13px; text-decoration:none;">← Volver a Clientes</a></p>
+  <h1 style="margin-top:8px;">${esc(c.name)} <span class="pill ${e.cls}">${e.label}</span></h1>
+  <p style="font-size:13px; color:#666; margin-bottom:6px;">Dueño: <strong>${esc(c.owner_name ?? 'sin nombre')}</strong> ·
+    ${c.owner_email ? `<a href="mailto:${esc(c.owner_email)}" style="color:#0066cc;">${esc(c.owner_email)}</a>` : 'sin email'}</p>
+  <div class="grid">
+    <div class="card"><div class="card-title">Plan vigente</div>
+      <div class="card-value" style="font-size:22px;">${PLAN[c.vigente] ?? esc(c.vigente)}</div>
+      <div class="card-sub">${c.vigente === 'free'
+        ? (c.plan_id && c.plan_id !== 'free' ? `tuvo ${PLAN[c.plan_id] ?? esc(c.plan_id)}, venció el ${fecha(c.plan_expires_at)}` : 'nunca tuvo un plan pago')
+        : `${FUENTE[c.plan_source] ?? 'sin fuente registrada'}${c.plan_is_trial ? ' · en trial' : ''}${c.plan_expires_at ? ` · vence el ${fecha(c.plan_expires_at)}` : ''}`}</div></div>
+    <div class="card"><div class="card-title">Revenue</div>
+      <div class="card-value" style="font-size:22px;">${plata(c.revenue)}</div>
+      <div class="card-sub">${c.last_payment_at ? `último cobro el ${fecha(c.last_payment_at)}` : 'todavía no hizo ningún pago'}${c.mrr ? ` · aporta ${plata(c.mrr)} por mes` : ''}</div></div>
+    <div class="card"><div class="card-title">Uso</div>
+      <div class="card-value" style="font-size:22px;">${c.patients} paciente${c.patients === 1 ? '' : 's'}</div>
+      <div class="card-sub">${c.cases} comparativa${c.cases === 1 ? '' : 's'} · ${c.loose_photos} foto${c.loose_photos === 1 ? '' : 's'} de sesión · ${c.members} en el equipo</div></div>
+    <div class="card"><div class="card-title">Actividad</div>
+      <div class="card-value" style="font-size:22px;">${hace(ultimaActividad(c))}</div>
+      <div class="card-sub">alta el ${fecha(c.created_at)}${c.last_content_at ? ` · último contenido el ${fecha(c.last_content_at)}` : ' · nunca cargó contenido'}</div></div>
+  </div>
+  ${c.deletion_purge_at ? `<p class="tbl-note warn" style="margin:0 0 10px;">Baja agendada: la cuenta se elimina sola el ${fecha(c.deletion_purge_at)} si no la cancelan desde la app.</p>` : ''}
+  ${c.deactivated_at ? `<p class="tbl-note warn" style="margin:0 0 10px;">Clínica pausada desde el ${fecha(c.deactivated_at)}. Se reactiva sola cuando vuelven a entrar.</p>` : ''}
+  <div id="ficha-detalle"><p class="empty" style="padding:20px 0;">Cargando equipo y cobros…</p></div>`;
+}
+
+async function cargarFicha(id) {
+  const r = await fetch(API + '?client=' + encodeURIComponent(id), { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+  if (r.status === 401) { sesionVencida(); return; }
+  const det = await r.json();
+  const box = $('ficha-detalle');
+  if (!box || ruta().extra !== id) return; // ya navegó a otra parte
+  if (!r.ok) { box.innerHTML = `<p class="empty">${esc(det.error ?? 'No se pudo cargar el detalle.')}</p>`; return; }
+  const ROL = { admin: 'Administrador', member: 'Miembro' };
+  const ACCION = { activated: '✓ Activación', extended: '✓ Renovación', store_payment: '🏪 Cobro de tienda',
+    revoked: '↩️ Reembolso / baja', cancelled: '⏸ Cancelación', unmatched: 'Sin asignar', ignored: 'Ignorado', error: 'Error' };
+  box.innerHTML = `
+  <h2 class="tbl-title">Equipo</h2>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Se sumó</th><th>Último ingreso</th></tr></thead>
+    <tbody>${(det.miembros ?? []).map((m) => `<tr>
+      <td>${esc(m.name ?? '—')}</td><td>${esc(m.email)}</td><td>${ROL[m.role] ?? esc(m.role)}</td>
+      <td>${fecha(m.joined_at)}</td><td>${m.last_sign_in_at ? `${fecha(m.last_sign_in_at)} · ${hace(m.last_sign_in_at)}` : 'nunca'}</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="empty">Sin miembros</td></tr>'}</tbody>
+  </table></div>
+
+  <h2 class="tbl-title">Historial de cobros</h2>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Fecha</th><th>Evento</th><th>Plan</th><th>Monto</th><th>Detalle</th></tr></thead>
+    <tbody>${(det.eventos ?? []).map((ev) => `<tr>
+      <td style="white-space:nowrap;">${fechaHora(ev.created_at)}</td>
+      <td class="${ev.action === 'revoked' || ev.action === 'error' ? 'off' : ev.action === 'cancelled' ? 'warn' : 'ok'}">${ACCION[ev.action] ?? esc(ev.action)}</td>
+      <td>${PLAN[ev.plan_id] ?? esc(ev.plan_id)}</td>
+      <td>${ev.amount != null ? `${esc(ev.currency ?? 'ARS')} ${Number(ev.amount).toLocaleString('es-AR')}` : '—'}</td>
+      <td style="max-width:340px;">${esc(ev.detail)}</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="empty">Sin cobros ni eventos de pago registrados</td></tr>'}</tbody>
+  </table></div>
+  <p class="tbl-note">Eventos de Mercado Pago y de las tiendas asociados a esta clínica, los 50 más recientes.</p>
+
+  <h2 class="tbl-title">Referidos</h2>
+  <div class="form-card" style="font-size:13px; line-height:1.7;">
+    ${det.canje
+      ? `Entró con el código <strong>${esc(det.canje.code)}</strong> de ${esc(det.canje.referidor)} el ${fecha(det.canje.redeemed_at)}. ${det.canje.first_payment_at ? `Hizo su primer pago el ${fecha(det.canje.first_payment_at)}.` : 'Todavía no hizo su primer pago.'}`
+      : 'No canjeó ningún código de referido.'}
+    <br>${(det.refiere ?? []).length
+      ? `Trajo ${det.refiere.length} clínica${det.refiere.length === 1 ? '' : 's'}: ${det.refiere.map((x) => `${esc(x.clinica)}${x.first_payment_at ? ' (ya paga)' : ''}`).join(', ')}.`
+      : 'Todavía no trajo a ninguna clínica con su código.'}
+  </div>`;
 }
 
 // ── Gestión de códigos de referido ───────────────────────────────────────────
@@ -674,7 +966,6 @@ async function guardarSettings() {
   });
   if (r.ok) {
     await cargar(TOKEN);
-    document.getElementById('referidos').scrollIntoView();
     const msg2 = $('st-msg'); // el re-render recreó el nodo
     msg2.className = 'form-msg ok';
     msg2.textContent = `Guardado: regalo ${r.settings.clinic_gift_days} días · premio ${r.settings.clinic_reward_days} días.`;
@@ -748,10 +1039,10 @@ async function guardarCodigo() {
         ...(kind === 'clinic' ? { referrer_org_id: $('rf-org').value } : {}) };
   const r = await postAPI(body);
   if (r.ok) {
-    msg.className = 'form-msg ok';
-    msg.textContent = RF_EDIT ? `Código ${r.code.code} actualizado.` : `Código ${r.code.code} creado.`;
+    const texto = RF_EDIT ? `Código ${r.code.code} actualizado.` : `Código ${r.code.code} creado.`;
     await cargar(TOKEN);
-    document.getElementById('referidos').scrollIntoView();
+    const msg2 = $('rf-msg'); // el re-render recreó el nodo
+    msg2.className = 'form-msg ok'; msg2.textContent = texto;
   } else {
     msg.className = 'form-msg err-msg';
     msg.textContent = r.error ?? 'Error desconocido';
@@ -762,7 +1053,7 @@ async function toggleCodigo(code, activar) {
   const act = activar === true || activar === 'true';
   if (!act && !confirm(`¿Desactivar ${code}? Nadie más va a poder canjearlo (los canjes ya hechos no se tocan).`)) return;
   const r = await postAPI({ action: 'toggle_code', code, active: act });
-  if (r.ok) { await cargar(TOKEN); document.getElementById('referidos').scrollIntoView(); }
+  if (r.ok) await cargar(TOKEN);
   else alert(r.error ?? 'Error al cambiar el estado');
 }
 
@@ -808,7 +1099,6 @@ async function crearCodigoPro(id) {
   const r = await postAPI({ action: 'create_pro_code', referrer_id: id });
   if (!r.ok) { alert(r.error ?? 'No se pudo crear la licencia Pro.'); return; }
   await cargar(TOKEN);
-  document.getElementById('afiliados').scrollIntoView();
 }
 
 // Abre propuesta.html con los datos reales del afiliado: su código con comisión,
@@ -890,10 +1180,10 @@ async function guardarReferidor() {
   };
   const r = await postAPI(body);
   if (r.ok) {
-    msg.className = 'form-msg ok';
-    msg.textContent = RR_EDIT ? `Afiliado ${r.referrer.name} actualizado.` : `Afiliado ${r.referrer.name} agregado.`;
+    const texto = RR_EDIT ? `Afiliado ${r.referrer.name} actualizado.` : `Afiliado ${r.referrer.name} agregado.`;
     await cargar(TOKEN);
-    document.getElementById('referidos').scrollIntoView();
+    const msg2 = $('rr-msg'); // el re-render recreó el nodo
+    msg2.className = 'form-msg ok'; msg2.textContent = texto;
   } else {
     msg.className = 'form-msg err-msg';
     msg.textContent = r.error ?? 'Error desconocido';
