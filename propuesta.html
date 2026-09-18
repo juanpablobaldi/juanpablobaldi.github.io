@@ -63,7 +63,8 @@
   th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--linea); }
   th:first-child, td:first-child { text-align: left; }
   thead th { background: var(--hueso); color: #444; font-weight: 600; font-size: 12px; }
-  td.dest { font-weight: 700; color: var(--indigo-tinta); }
+  td.dest, td .dest { font-weight: 700; color: var(--indigo-tinta); }
+  #tabla th, #tabla-body td { white-space: nowrap; padding-left: 6px; padding-right: 6px; }
   .nota { color: var(--niebla); font-size: 11.5px; margin-top: 6px; }
   .por-clinica { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
   .pc { border: 1px solid var(--linea); border-radius: 10px; padding: 10px 12px; }
@@ -243,12 +244,12 @@
   $('por-clinica').innerHTML = planes.map((k) => {
     const mensual = porClinica(k);
     return `<div class="pc"><div class="p">Por cada clínica en<br>plan ${PLAN[k]}</div>
-      <div class="v">${usd(mensual)}<span style="font-size:12px;font-weight:500;color:#555;"> / mes</span></div>
-      <div class="s">${usd(mensual * meses)} en ${mesesTxt}</div></div>`;
+      <div class="v">${usd(mensual * meses)}<span style="font-size:12px;font-weight:500;color:#555;"> en ${mesesTxt}</span></div>
+      <div class="s">${usd(mensual)} por mes</div></div>`;
   }).join('');
   $('tabla-body').innerHTML = [5, 10, 20].map((n) => `<tr><td>${n} clínicas</td>${planes.map((k) => {
     const mensual = n * porClinica(k);
-    return `<td><span class="dest">${usd(mensual)}</span> / mes<br><span style="color:#555;font-size:12px;">${usd(mensual * meses)} en ${mesesTxt}</span></td>`;
+    return `<td><span class="dest">${usd(mensual * meses)}</span> en ${mesesTxt}<br><span style="color:#555;font-size:12px;">${usd(mensual)} por mes</span></td>`;
   }).join('')}</tr>`).join('');
   $('nota-tabla').textContent =
     `Estimación en dólares con los precios de hoy en App Store y Google Play: Profesional ${usd(preciosUsd.profesional)}, Clínica ${usd(preciosUsd.clinica)} y Clínica Pro ${usd(preciosUsd.clinica_pro)} por mes. ` +
