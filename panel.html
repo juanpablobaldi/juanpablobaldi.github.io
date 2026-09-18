@@ -461,62 +461,10 @@ const VISTAS = {
     <div class="card"><div class="card-title">Comisiones 30d</div><div class="card-value">${plata(ref.comisiones_30d)}</div>
       <div class="card-sub">a liquidar a consultores</div></div>
   </div>
-  <div class="form-card" id="ref-form">
-    <h2 id="rf-title">➕ Crear código</h2>
-    <div class="form-grid">
-      <div class="field"><label for="rf-code">Código</label>
-        <input id="rf-code" placeholder="SILVIA20" maxlength="20" style="text-transform:uppercase;">
-        <div class="hint">4-20 letras mayúsculas y números</div></div>
-      <div class="field"><label for="rf-kind">Tipo</label>
-        <select id="rf-kind" onchange="refKindChange()">
-          <option value="consultant">👨‍💼 Consultor</option>
-          <option value="clinic">🏥 Clínica que refiere</option>
-        </select></div>
-      <div class="field"><label for="rf-ref">Afiliado</label>
-        <select id="rf-ref">${(d.referidores ?? []).filter(r => r.active !== false).map(r =>
-          `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('') || '<option value="">— No hay afiliados —</option>'}</select>
-        <div class="hint">Se muestra al canjear: «cortesía de …». ¿Falta? Agregalo en la página «Afiliados»</div></div>
-      <div class="field"><label for="rf-days">Días de regalo</label>
-        <input id="rf-days" type="number" min="1" max="365" value="${(d.settings ?? {}).clinic_gift_days ?? 30}"></div>
-      <div class="field"><label for="rf-plan">Plan de regalo</label>
-        <select id="rf-plan">
-          <option value="profesional">Profesional</option>
-          <option value="clinica" selected>Clínica</option>
-          <option value="clinica_pro">Clínica Pro</option>
-        </select></div>
-      <div class="field rf-consultant"><label for="rf-pct">Comisión %</label>
-        <input id="rf-pct" type="number" min="0" max="100" value="20">
-        <div class="hint">Se usa al calcular cada liquidación (afecta lo no liquidado)</div></div>
-      <div class="field rf-consultant"><label for="rf-months">Meses de comisión</label>
-        <input id="rf-months" type="number" min="1" max="60" value="6"></div>
-      <div class="field rf-clinic" style="display:none;"><label for="rf-org">Clínica referidora</label>
-        <select id="rf-org">${(d.orgs ?? []).map(o => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select>
-        <div class="hint">Recibe +${(d.settings ?? {}).clinic_reward_days ?? 30} días al 1er pago del referido</div></div>
-      <div class="field"><label for="rf-max">Cupo de canjes</label>
-        <input id="rf-max" type="number" min="1" placeholder="Sin tope"></div>
-      <div class="field"><label for="rf-notes">Notas</label>
-        <input id="rf-notes" placeholder="Opcional"></div>
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-sm" id="rf-submit" onclick="guardarCodigo()">Crear código</button>
-      <button class="btn btn-sm btn-ghost" id="rf-cancel" style="display:none;" onclick="refModoCrear()">Cancelar edición</button>
-      <span class="form-msg" id="rf-msg"></span>
-    </div>
-  </div>
-
-  <table>
-    <thead><tr><th>Código</th><th>Tipo</th><th>Referidor</th><th>Plan regalo</th><th>Días</th><th>Comisión</th><th>Canjes</th><th>Convertidos</th><th>Estado</th><th>Acciones</th></tr></thead>
-    <tbody>${d.codigos.map(c => `<tr>
-      <td><strong>${esc(c.code)}</strong></td>
-      <td>${c.kind === 'consultant' ? '👨‍💼 Consultor' : '🏥 Clínica'}${c.auto ? ' <span style="color:#999; font-size:11px;">· auto</span>' : ''}</td>
-      <td>${esc(c.display_name)}</td><td>${esc(c.plan_id)}</td><td>${c.trial_days}</td>
-      <td>${c.kind === 'consultant' && c.commission_pct != null ? `${c.commission_pct}% × ${c.commission_months ?? 6}m` : '—'}</td>
-      <td>${c.canjes}${c.max_redemptions ? ' / ' + c.max_redemptions : ''}</td><td>${c.convertidos}</td>
-      <td class="${c.active ? 'ok' : 'off'}">${c.active ? '✓ Activo' : '✗ Inactivo'}</td>
-      <td><button class="rowbtn" onclick="editarCodigo('${esc(c.code)}')">✏️ Editar</button>
-          <button class="rowbtn ${c.active ? 'danger' : ''}" onclick="toggleCodigo('${esc(c.code)}', ${c.active ? 'false' : 'true'})">${c.active ? 'Desactivar' : 'Reactivar'}</button></td>
-    </tr>`).join('') || '<tr><td colspan="10" class="empty">Sin códigos creados</td></tr>'}</tbody>
-  </table>`; },
+  <p style="margin:6px 0 0;"><button class="btn btn-sm btn-ghost" onclick="nuevoCodigoClinica()">➕ Crear código de clínica</button>
+    <span style="font-size:12px; color:#999; margin-left:8px;">Los códigos de afiliados se crean en la página «Afiliados», junto al alta.</span></p>
+  ${formCodigo(d, true)}
+  ${tablaCodigos(d, d.codigos ?? [])}`; },
   'referidos/canjes': (d) => `
   <h1>Canjes</h1>
   <table>
@@ -591,6 +539,8 @@ const VISTAS = {
       <span class="form-msg" id="rr-msg"></span>
     </div>
   </div>
+  ${formCodigo(d, false)}
+  <h2 class="tbl-title">Afiliados</h2>
   <table>
     <thead><tr><th>Afiliado</th><th>Email portal</th><th>Códigos</th><th>Licencia Pro</th><th>Cobro</th><th>Datos bancarios</th><th>Notas</th><th>Acciones</th></tr></thead>
     <tbody>${(d.referidores ?? []).map(r => `<tr>
@@ -611,7 +561,9 @@ const VISTAS = {
             ? cods.map(c => `<button class="rowbtn" onclick="abrirPropuesta('${esc(r.id)}', '${esc(c.code)}')">📄 ${esc(c.code)}</button>`).join(' ')
             : `<button class="rowbtn" onclick="abrirPropuesta('${esc(r.id)}')">📄 Propuesta</button>`; })()}</td>
     </tr>`).join('') || '<tr><td colspan="8" class="empty">Sin afiliados — creá el primero acá arriba</td></tr>'}</tbody>
-  </table>`,
+  </table>
+  <h2 class="tbl-title">Códigos de afiliados</h2>
+  ${tablaCodigos(d, (d.codigos ?? []).filter((c) => c.kind === 'consultant'))}`,
   'afiliados/liquidacion': (d) => `
   <h1>Liquidación consultores (últimos 30 días)</h1>
   <table>
@@ -714,6 +666,78 @@ const DESPUES = {
   'afiliados/simulador': () => simular(),
   'clientes/clinicas': (d, extra) => extra ? cargarFicha(extra) : pintarClientes(),
 };
+
+// Formulario de códigos y tabla de códigos: se usan en dos lugares. En
+// «Afiliados» el form está siempre a la vista junto al alta (es donde se crean
+// casi todos los códigos); en «Referidos» aparece recién al editar un código o
+// al pedir uno de clínica, que por lo general se autogeneran desde la app.
+function formCodigo(d, oculto) { return `
+  <div class="form-card" id="ref-form"${oculto ? ' style="display:none;"' : ''}>
+    <h2 id="rf-title">➕ Crear código</h2>
+    <div class="form-grid">
+      <div class="field"><label for="rf-code">Código</label>
+        <input id="rf-code" placeholder="SILVIA20" maxlength="20" style="text-transform:uppercase;">
+        <div class="hint">4-20 letras mayúsculas y números</div></div>
+      <div class="field"><label for="rf-kind">Tipo</label>
+        <select id="rf-kind" onchange="refKindChange()">
+          <option value="consultant">👨‍💼 Consultor</option>
+          <option value="clinic">🏥 Clínica que refiere</option>
+        </select></div>
+      <div class="field"><label for="rf-ref">Afiliado</label>
+        <select id="rf-ref">${(d.referidores ?? []).filter(r => r.active !== false).map(r =>
+          `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('') || '<option value="">— No hay afiliados —</option>'}</select>
+        <div class="hint">Se muestra al canjear: «cortesía de …». ¿Falta? Dalo de alta en «Nuevo afiliado», en la página «Afiliados»</div></div>
+      <div class="field"><label for="rf-days">Días de regalo</label>
+        <input id="rf-days" type="number" min="1" max="365" value="${(d.settings ?? {}).clinic_gift_days ?? 30}"></div>
+      <div class="field"><label for="rf-plan">Plan de regalo</label>
+        <select id="rf-plan">
+          <option value="profesional">Profesional</option>
+          <option value="clinica" selected>Clínica</option>
+          <option value="clinica_pro">Clínica Pro</option>
+        </select></div>
+      <div class="field rf-consultant"><label for="rf-pct">Comisión %</label>
+        <input id="rf-pct" type="number" min="0" max="100" value="20">
+        <div class="hint">Se usa al calcular cada liquidación (afecta lo no liquidado)</div></div>
+      <div class="field rf-consultant"><label for="rf-months">Meses de comisión</label>
+        <input id="rf-months" type="number" min="1" max="60" value="6"></div>
+      <div class="field rf-clinic" style="display:none;"><label for="rf-org">Clínica referidora</label>
+        <select id="rf-org">${(d.orgs ?? []).map(o => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select>
+        <div class="hint">Recibe +${(d.settings ?? {}).clinic_reward_days ?? 30} días al 1er pago del referido</div></div>
+      <div class="field"><label for="rf-max">Cupo de canjes</label>
+        <input id="rf-max" type="number" min="1" placeholder="Sin tope"></div>
+      <div class="field"><label for="rf-notes">Notas</label>
+        <input id="rf-notes" placeholder="Opcional"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-sm" id="rf-submit" onclick="guardarCodigo()">Crear código</button>
+      <button class="btn btn-sm btn-ghost" id="rf-cancel" style="display:none;" onclick="refModoCrear()">Cancelar</button>
+      <span class="form-msg" id="rf-msg"></span>
+    </div>
+  </div>`; }
+
+function tablaCodigos(d, lista) { return `
+  <table>
+    <thead><tr><th>Código</th><th>Tipo</th><th>Referidor</th><th>Plan regalo</th><th>Días</th><th>Comisión</th><th>Canjes</th><th>Convertidos</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <tbody>${lista.map(c => `<tr>
+      <td><strong>${esc(c.code)}</strong></td>
+      <td>${c.kind === 'consultant' ? '👨‍💼 Consultor' : '🏥 Clínica'}${c.auto ? ' <span style="color:#999; font-size:11px;">· auto</span>' : ''}</td>
+      <td>${esc(c.display_name)}</td><td>${esc(c.plan_id)}</td><td>${c.trial_days}</td>
+      <td>${c.kind === 'consultant' && c.commission_pct != null ? `${c.commission_pct}% × ${c.commission_months ?? 6}m` : '—'}</td>
+      <td>${c.canjes}${c.max_redemptions ? ' / ' + c.max_redemptions : ''}</td><td>${c.convertidos}</td>
+      <td class="${c.active ? 'ok' : 'off'}">${c.active ? '✓ Activo' : '✗ Inactivo'}</td>
+      <td><button class="rowbtn" onclick="editarCodigo('${esc(c.code)}')">✏️ Editar</button>
+          <button class="rowbtn ${c.active ? 'danger' : ''}" onclick="toggleCodigo('${esc(c.code)}', ${c.active ? 'false' : 'true'})">${c.active ? 'Desactivar' : 'Reactivar'}</button></td>
+    </tr>`).join('') || '<tr><td colspan="10" class="empty">Sin códigos creados</td></tr>'}</tbody>
+  </table>`; }
+
+function nuevoCodigoClinica() {
+  refModoCrear();
+  $('ref-form').style.display = '';
+  $('rf-kind').value = 'clinic';
+  refKindChange();
+  $('rf-cancel').style.display = ''; // acá el form es transitorio: que se pueda cerrar
+  $('ref-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
 
 // ── Clientes ─────────────────────────────────────────────────────────────────
 // d.clientes = una fila por clínica (RPC admin_clients, mig 064) con `vigente`
@@ -983,6 +1007,7 @@ function refKindChange() {
 
 function refModoCrear() {
   RF_EDIT = null;
+  if (ruta().pag.id === 'referidos') $('ref-form').style.display = 'none';
   $('rf-title').textContent = '➕ Crear código';
   $('rf-submit').textContent = 'Crear código';
   $('rf-cancel').style.display = 'none';
@@ -1000,6 +1025,7 @@ function editarCodigo(code) {
   const c = (DATOS?.codigos ?? []).find(x => x.code === code);
   if (!c) return;
   RF_EDIT = code;
+  $('ref-form').style.display = '';
   $('rf-title').textContent = `✏️ Editando ${code}`;
   $('rf-submit').textContent = 'Guardar cambios';
   $('rf-cancel').style.display = '';
@@ -1041,6 +1067,7 @@ async function guardarCodigo() {
   if (r.ok) {
     const texto = RF_EDIT ? `Código ${r.code.code} actualizado.` : `Código ${r.code.code} creado.`;
     await cargar(TOKEN);
+    $('ref-form').style.display = ''; // en «Referidos» vuelve oculto: mostrarlo para que se lea el aviso
     const msg2 = $('rf-msg'); // el re-render recreó el nodo
     msg2.className = 'form-msg ok'; msg2.textContent = texto;
   } else {
@@ -1108,7 +1135,7 @@ function abrirPropuesta(id, code) {
   if (!r) return;
   const cods = (DATOS?.codigos ?? []).filter((c) => c.referrer_id === id && c.active && esCodigoAfiliado(c));
   if (!cods.length) {
-    alert('Este afiliado no tiene un código activo con comisión. Crealo primero en «Referidos».');
+    alert('Este afiliado no tiene un código activo con comisión. Crealo primero en «Crear código», en esta misma página.');
     return;
   }
   // Con varios códigos la tabla muestra un botón por código y pasa cuál;
