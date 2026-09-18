@@ -1116,11 +1116,12 @@ function abrirPropuesta(id, code) {
   const c = code ? cods.find((x) => x.code === code) : (cods.length === 1 ? cods[0] : null);
   if (!c) { alert('Este afiliado tiene varios códigos: elegí con qué código armar la propuesta.'); return; }
   const pro = (DATOS?.codigos ?? []).find((x) => x.referrer_id === id && esCodigoPro(x));
-  const P = DATOS?.precios ?? {};
+  const P = DATOS?.precios ?? {}, U = DATOS?.precios_usd ?? {};
   const q = new URLSearchParams({
     nombre: r.name, codigo: c.code, dias: c.trial_days, plan: c.plan_id,
     pct: c.commission_pct ?? 20, meses: c.commission_months ?? 6, pro: pro?.code ?? '',
     p_profesional: P.profesional ?? '', p_clinica: P.clinica ?? '', p_clinica_pro: P.clinica_pro ?? '',
+    u_profesional: U.profesional ?? '', u_clinica: U.clinica ?? '', u_clinica_pro: U.clinica_pro ?? '', // USD de tienda
   });
   window.open('propuesta.html?' + q.toString(), '_blank');
 }

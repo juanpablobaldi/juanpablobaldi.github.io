@@ -100,7 +100,7 @@
   <div class="hero">
     <div class="eti">Propuesta para <span id="nombre-eti"></span></div>
     <h1>Recomendá la app que gestiona las fotos de los consultorios y cobrá por cada clínica que se suscriba.</h1>
-    <p>Trabajás con clínicas de estética todos los días. Antes &amp; Después les resuelve algo que hoy hacen mal o no hacen: fotos comparables entre visitas, listas para mostrarle al paciente. Vos la recomendás con tu código, ellas la prueban gratis, y cuando pagan, cobrás.</p>
+    <p>Trabajás con clínicas de estética todos los días. Antes &amp; Después les resuelve un punto de dolor habitual de los profesionales: tener fotos comparables entre visitas, listas para mostrarle al paciente sus cambios. Vos la recomendás con tu código, ellas la prueban gratis, y cuando pagan, cobrás.</p>
   </div>
 
   <h2><span class="n">1</span> Qué resuelve la app</h2>
@@ -136,7 +136,7 @@
     </div>
   </div>
 
-  <footer><span>antesydespues.app</span><span>Página 1 de 2</span></footer>
+  <footer><span><a href="https://antesydespues.app" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">antesydespues.app</a></span><span>Página 1 de 2</span></footer>
 </section>
 
 <section class="hoja">
@@ -150,7 +150,7 @@
     <div>
       <div style="font-size:13.5px;">Para que conozcas la app a fondo antes de recomendarla, tenés el plan <b>Clínica Pro</b> completo sin costo mientras seas parte del programa.</div>
       <ol id="pro-pasos">
-        <li>Descargá la app con los códigos QR de la derecha o desde <b>antesydespues.app</b>.</li>
+        <li>Descargá la app con los códigos QR de la derecha o desde <a href="https://antesydespues.app" target="_blank" rel="noopener" style="color:var(--indigo-tinta);font-weight:600;text-decoration:none;">antesydespues.app</a>.</li>
         <li>Creá tu cuenta con tu email.</li>
         <li id="pro-paso-codigo">Al registrarte, cuando te pregunte por un código, ingresá <span class="val" id="pro-codigo" style="font-size:15px;"></span>.</li>
       </ol>
@@ -171,15 +171,15 @@
   <ul class="cond">
     <li>La comisión es el <b id="pct-3"></b> de cada pago mensual de la clínica referida, durante <b id="meses-3"></b> contados desde su primer pago.</li>
     <li>Se calcula sobre el precio de lista en pesos del plan que tenga la clínica, sin importar si paga por Mercado Pago, App Store o Google Play.</li>
-    <li>Se liquida una vez por mes, a fin de mes, en pesos, por transferencia o efectivo.</li>
+    <li>Se liquida una vez por mes, a fin de mes, por transferencia o efectivo.</li>
     <li>Si una clínica pide un reembolso o hace un contracargo, ese mes se descuenta de tu comisión.</li>
     <li>Cada clínica puede canjear un solo código en toda su vida, y solo si está en el plan gratuito.</li>
     <li>Tu código no tiene tope de canjes ni de tiempo mientras seas parte del programa.</li>
-    <li>Seguís tus canjes, comisiones y pagos en tu portal: <b>antesydespues.app/afiliados.html</b>, con tu email y sin contraseña.</li>
+    <li>Seguís tus canjes, comisiones y pagos en tu portal: <a href="https://antesydespues.app/afiliados.html" target="_blank" rel="noopener" style="color:var(--indigo-tinta);font-weight:600;text-decoration:none;">antesydespues.app/afiliados.html</a>, con tu email y sin contraseña.</li>
   </ul>
   <p class="nota" id="contacto-linea" style="margin-top:10px;font-size:12.5px;color:#444;"></p>
 
-  <footer><span id="contacto-pie">antesydespues.app</span><span>Página 2 de 2</span></footer>
+  <footer><span id="contacto-pie"><a href="https://antesydespues.app" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">antesydespues.app</a></span><span>Página 2 de 2</span></footer>
 </section>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
@@ -198,6 +198,15 @@
     clinica: Number(q.get('p_clinica') || 0),
     clinica_pro: Number(q.get('p_clinica_pro') || 0),
   };
+  // Precios de App Store / Google Play en dólares para el cuadro de ganancias.
+  // El panel los manda en u_* (plan_prices.amount_usd); el valor fijo es solo
+  // el respaldo para links armados antes de este cambio.
+  const preciosUsd = {
+    profesional: Number(q.get('u_profesional') || 6.99),
+    clinica: Number(q.get('u_clinica') || 19.99),
+    clinica_pro: Number(q.get('u_clinica_pro') || 59.99),
+  };
+  const usd = (n) => 'US$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   // WhatsApp de Juan por defecto; ?contacto= lo pisa
   const contacto = q.get('contacto') || '+54 9 11 5871-7395';
   const waLink = 'https://wa.me/' + contacto.replace(/\D/g, '');
@@ -214,7 +223,7 @@
   ['meses-1', 'meses-3'].forEach((id) => $(id).textContent = mesesTxt);
   $('codigo').textContent = codigo;
   $('wa-texto').textContent =
-    `Hola! Te recomiendo Antes & Después, la app para sacar fotos clínicas comparables y armar el antes/después de tus pacientes en un toque. ` +
+    `Hola! Te recomiendo Antes & Después, la app para sacar fotos clínicas comparables y armar el antes/después de tus pacientes al instante. ` +
     `Con mi código ${codigo} tenés ${dias} días del plan ${plan} gratis. ` +
     `Bajala en antesydespues.app y cargá el código cuando te registres.`;
 
@@ -223,24 +232,27 @@
   } else {
     $('pro-paso-codigo').innerHTML = 'Avisanos cuando la tengas creada y te activamos el plan Clínica Pro en el momento.';
   }
-  $('contacto-pie').textContent = `antesydespues.app · WhatsApp ${contacto}`;
+  $('contacto-pie').innerHTML = `<a href="https://antesydespues.app" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">antesydespues.app</a> · WhatsApp ${contacto}`;
   $('contacto-linea').innerHTML = `¿Dudas o querés arrancar? Escribime por WhatsApp al <a href="${waLink}" style="color:var(--indigo-tinta);font-weight:600;text-decoration:none;">${contacto}</a>.`;
 
   // Ganancias: por cada clínica, y escenarios de 5 / 10 / 20 clínicas
   const planes = ['profesional', 'clinica', 'clinica_pro'];
+  // Comisión mensual por clínica redondeada al centavo: todo lo demás (12 meses,
+  // 5/10/20 clínicas) se multiplica desde ahí, así las cuentas cierran a la vista.
+  const porClinica = (k) => Math.round(preciosUsd[k] * pct) / 100;
   $('por-clinica').innerHTML = planes.map((k) => {
-    const mensual = precios[k] * pct / 100;
-    return `<div class="pc"><div class="p">Por cada clínica en plan ${PLAN[k]}</div>
-      <div class="v">${plata(mensual)}<span style="font-size:12px;font-weight:500;color:#555;"> / mes</span></div>
-      <div class="s">${plata(mensual * meses)} en ${mesesTxt}</div></div>`;
+    const mensual = porClinica(k);
+    return `<div class="pc"><div class="p">Por cada clínica en<br>plan ${PLAN[k]}</div>
+      <div class="v">${usd(mensual)}<span style="font-size:12px;font-weight:500;color:#555;"> / mes</span></div>
+      <div class="s">${usd(mensual * meses)} en ${mesesTxt}</div></div>`;
   }).join('');
   $('tabla-body').innerHTML = [5, 10, 20].map((n) => `<tr><td>${n} clínicas</td>${planes.map((k) => {
-    const mensual = n * precios[k] * pct / 100;
-    return `<td><span class="dest">${plata(mensual)}</span> / mes<br><span style="color:#555;font-size:12px;">${plata(mensual * meses)} en ${mesesTxt}</span></td>`;
+    const mensual = n * porClinica(k);
+    return `<td><span class="dest">${usd(mensual)}</span> / mes<br><span style="color:#555;font-size:12px;">${usd(mensual * meses)} en ${mesesTxt}</span></td>`;
   }).join('')}</tr>`).join('');
   $('nota-tabla').textContent =
-    `Estimación con los precios de lista de hoy: Profesional ${plata(precios.profesional)}, Clínica ${plata(precios.clinica)} y Clínica Pro ${plata(precios.clinica_pro)} por mes. ` +
-    `Supone que cada clínica paga todos los meses del período. Los precios pueden actualizarse; tu porcentaje no.`;
+    `Estimación en dólares con los precios de hoy en App Store y Google Play: Profesional ${usd(preciosUsd.profesional)}, Clínica ${usd(preciosUsd.clinica)} y Clínica Pro ${usd(preciosUsd.clinica_pro)} por mes. ` +
+    `Supone que cada clínica paga todos los meses del período. Los precios pueden actualizarse.`;
 
   // QR de descarga
   const qr = (id, url) => {
