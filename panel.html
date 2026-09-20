@@ -172,19 +172,17 @@ function simular() {
 }
 // Número de la tabla de planes → click muestra las clínicas que lo componen
 const num = (n, filtro) => n > 0
-  ? `<button class="numlink" onclick="verClinicas('${filtro}')">${n}</button>`
+  ? `<button class="numlink" onclick="irAClientes('${filtro}')">${n}</button>`
   : String(n);
 const FUENTE = { apple: '🍎 Apple', google: '🤖 Google', direct: '💳 Mercado Pago', promo: '🎁 Promo/Referido' };
 const PLAN = { free: 'Free', profesional: 'Profesional', clinica: 'Clínica', clinica_pro: 'Clínica Pro' };
-// ── Detalle de clínicas (debajo de las tablas de Métricas) ─────────────────
-// Un número de las tablas abre el detalle con los filtros ya puestos; desde
-// ahí se pueden cambiar. Trabaja sobre d.clientes (mismas organizaciones que
-// d.orgs, con `vigente` resuelto por la función) para tener código y región.
+// ── De un número de las tablas de Métricas al listado de Clientes ───────────
+// El listado vive en Clientes → Clínicas (una sola tabla, con todos los
+// filtros). Un número de estas tablas navega ahí con los filtros ya puestos.
 // Criterios iguales a dashboard-referrals: paga = fuente de cobro real sin
 // trial; trial de tienda = esa fuente con la marca; por referido = 'promo'.
 // La fuente solo cuenta con plan vigente: una Free puede conservar el
 // plan_source de una suscripción ya vencida.
-const DET = { plan: '', region: '', fuente: '', codigo: '', sit: '' };
 const fuenteDe = (c) => (c.vigente === 'free' ? '' : (c.plan_source ?? ''));
 const situacionDe = (c) => c.vigente === 'free' ? ''
   : conCobro(c) ? (c.plan_is_trial ? 'trial' : 'paga')
@@ -194,76 +192,18 @@ const bandera = (iso) => iso.replace(/./g, (ch) => String.fromCodePoint(127397 +
 const regionTxt = (iso) => iso ? `${bandera(iso)} ${NOMBRE_REGION.of(iso) ?? iso}` : 'Sin dato';
 const REGION_SRC = { mp: 'cobra por Mercado Pago', telefono: 'teléfonos de sus pacientes', email: 'dominio del email' };
 
-function verClinicas(filtro) {
+function irAClientes(filtro) {
   const [tipo, valor] = String(filtro).split(':');
-  Object.assign(DET, { plan: '', region: '', fuente: '', codigo: '', sit: '' });
-  if (tipo === 'plan') DET.plan = valor;
-  if (tipo === 'conplan') DET.plan = 'pago';
-  if (tipo === 'pago') { DET.plan = valor; DET.sit = 'paga'; }
-  if (tipo === 'trial') { DET.plan = valor; DET.sit = 'trial'; }
-  if (tipo === 'promo') { DET.plan = valor; DET.sit = 'promo'; }
-  if (tipo === 'nofuente') { DET.plan = valor; DET.fuente = 'ninguna'; }
-  if (tipo === 'src') DET.fuente = valor;
+  limpiarFiltrosClientes();
+  if (tipo === 'plan') CL.plan = valor;
+  if (tipo === 'conplan') CL.plan = 'pago';
+  if (tipo === 'pago') { CL.plan = valor; CL.estado = 'paga'; }
+  if (tipo === 'trial') { CL.plan = valor; CL.estado = 'trial'; }
+  if (tipo === 'promo') { CL.plan = valor; CL.estado = 'cortesia'; }
+  if (tipo === 'nofuente') { CL.plan = valor; CL.estado = 'sinfuente'; }
+  if (tipo === 'src') CL.fuente = valor;
   // 'todas' → sin filtros
-  const cs = DATOS?.clientes ?? [];
-  const opt = (v, label, sel) => `<option value="${esc(v)}"${v === sel ? ' selected' : ''}>${esc(label)}</option>`;
-  const regiones = [...new Set(cs.map((c) => c.region).filter(Boolean))]
-    .sort((a, b) => String(NOMBRE_REGION.of(a)).localeCompare(String(NOMBRE_REGION.of(b)), 'es'));
-  const codigos = [...new Set(cs.map((c) => c.referral_code).filter(Boolean))].sort();
-  const sel = (id, campo, opciones) =>
-    `<select id="${id}" onchange="DET.${campo} = this.value; pintarDetalle()">${opciones}</select>`;
-  const box = $('plan-detalle');
-  box.innerHTML = `
-    <h2><span id="det-titulo"></span>
-      <button class="rowbtn" onclick="$('plan-detalle').innerHTML = ''">Cerrar</button></h2>
-    <div class="cl-tools" style="margin-top:0;">
-      ${sel('det-plan', 'plan', opt('', 'Plan: todos', DET.plan) + opt('pago', 'Con plan (sin Free)', DET.plan)
-        + Object.entries(PLAN).map(([k, v]) => opt(k, v, DET.plan)).join(''))}
-      ${sel('det-sit', 'sit', opt('', 'Situación: todas', DET.sit) + opt('paga', 'Pagas', DET.sit)
-        + opt('trial', 'En trial de tienda', DET.sit) + opt('promo', 'En trial por referido', DET.sit))}
-      ${sel('det-region', 'region', opt('', 'Región: todas', DET.region)
-        + regiones.map((r) => opt(r, regionTxt(r), DET.region)).join('') + opt('ninguna', 'Sin dato', DET.region))}
-      ${sel('det-fuente', 'fuente', opt('', 'Fuente: todas', DET.fuente)
-        + Object.entries(FUENTE).map(([k, v]) => opt(k, v, DET.fuente)).join('') + opt('ninguna', 'Con plan y sin fuente', DET.fuente))}
-      ${sel('det-codigo', 'codigo', opt('', 'Código: todos', DET.codigo) + opt('alguno', 'Con algún código', DET.codigo)
-        + opt('ninguno', 'Sin código', DET.codigo) + codigos.map((k) => opt(k, k, DET.codigo)).join(''))}
-      <button class="rowbtn" onclick="verClinicas('todas')">Limpiar filtros</button>
-    </div>
-    <div class="tbl-scroll"><table>
-      <thead><tr><th>Clínica</th><th>Plan vigente</th><th>Fuente</th><th>Situación</th><th>Región</th><th>Código</th><th>Vence</th><th>Creada</th></tr></thead>
-      <tbody id="det-tbody"></tbody>
-    </table></div>
-    <p class="tbl-note">La región es una estimación: sale de si cobra por Mercado Pago, del prefijo telefónico más frecuente entre sus pacientes o del dominio de país del email del dueño. Pasá el mouse sobre una región para ver de dónde salió.</p>`;
-  pintarDetalle();
-  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-function pintarDetalle() {
-  const tb = $('det-tbody');
-  if (!tb) return;
-  const SIT = { paga: '<span class="ok">✓ Paga</span>', trial: '<span class="warn">⏳ Trial de tienda</span>', promo: '🎁 Trial por referido' };
-  const lista = (DATOS?.clientes ?? []).filter((c) =>
-    (!DET.plan || (DET.plan === 'pago' ? c.vigente !== 'free' : c.vigente === DET.plan))
-    && (!DET.sit || situacionDe(c) === DET.sit)
-    && (!DET.region || (DET.region === 'ninguna' ? !c.region : c.region === DET.region))
-    && (!DET.fuente || (DET.fuente === 'ninguna' ? (c.vigente !== 'free' && !fuenteDe(c)) : fuenteDe(c) === DET.fuente))
-    && (!DET.codigo || (DET.codigo === 'alguno' ? !!c.referral_code
-      : DET.codigo === 'ninguno' ? !c.referral_code : c.referral_code === DET.codigo)))
-    .sort((a, b) => String(a.name).localeCompare(String(b.name), 'es'));
-  const total = (DATOS?.clientes ?? []).length;
-  $('det-titulo').textContent = lista.length === total
-    ? `Todas las clínicas · ${total}`
-    : `${lista.length} de ${total} clínicas`;
-  tb.innerHTML = lista.map((c) => `<tr>
-    <td><a href="#/clientes/clinicas/${esc(c.id)}" style="color:#0066cc; text-decoration:none;">${esc(c.name)}</a><span class="sub">${esc(c.owner_email)}</span></td>
-    <td>${PLAN[c.vigente] ?? esc(c.vigente)}</td>
-    <td>${FUENTE[fuenteDe(c)] ?? '—'}</td>
-    <td>${SIT[situacionDe(c)] ?? '—'}</td>
-    <td${c.region ? ` title="Estimada por: ${esc(REGION_SRC[c.region_src] ?? '')}"` : ' class="muted"'}>${regionTxt(c.region)}</td>
-    <td>${c.referral_code ? `<strong>${esc(c.referral_code)}</strong><span class="sub">${esc(c.referrer_name ?? '')}</span>` : '—'}</td>
-    <td>${c.vigente !== 'free' && c.plan_expires_at ? fecha(c.plan_expires_at) : '—'}</td>
-    <td>${fecha(c.created_at)}</td></tr>`).join('')
-    || '<tr><td colspan="8" class="empty">Ninguna clínica coincide con los filtros</td></tr>';
+  location.hash = '#/clientes/clinicas';
 }
 
 // Reparto de "vigentes" por plan, con los mismos criterios que
@@ -507,7 +447,7 @@ const VISTAS = {
   </div>
   ${tablaPlanes(d)}
   ${tablaFuentes(d)}
-  <div id="plan-detalle"></div>`; },
+  <p class="tbl-note" style="margin-top:-12px;">Tocá cualquier número para ver esas clínicas en la página Clientes, con el filtro ya aplicado.</p>`; },
   'resumen/revenue': (d) => `
   <h1>Revenue histórico</h1>
   ${revenueSection(d.revenue ?? [])}`,
@@ -828,27 +768,48 @@ function estadoCliente(c) {
   if (c.plan_id && c.plan_id !== 'free') return { k: 'vencida', label: 'Plan vencido', cls: 'off' };
   return { k: 'free', label: 'Free', cls: 'muted' };
 }
-const ESTADOS = [['paga', 'Pagan'], ['trial', 'En trial'], ['cortesia', 'Cortesía'], ['free', 'Free'],
-  ['vencida', 'Plan vencido'], ['pausada', 'Pausadas'], ['baja', 'Baja agendada']];
+const ESTADOS = [['paga', 'Pagan'], ['trial', 'En trial de tienda'], ['cortesia', 'En trial por referido / cortesía'],
+  ['free', 'Free (nunca tuvo plan)'], ['vencida', 'Plan vencido'], ['sinfuente', 'Plan sin fuente'],
+  ['pausada', 'Pausadas'], ['baja', 'Baja agendada']];
+// El FILTRO usa estos predicados y no la etiqueta de la fila: una clínica que
+// paga y además está pausada se muestra «Pausada», pero tiene que aparecer al
+// filtrar «Pagan» para que el conteo coincida con las tablas de Métricas.
+const ESTADO_PRED = {
+  paga: (c) => situacionDe(c) === 'paga',
+  trial: (c) => situacionDe(c) === 'trial',
+  cortesia: (c) => situacionDe(c) === 'promo',
+  sinfuente: (c) => c.vigente !== 'free' && !situacionDe(c),
+  free: (c) => c.vigente === 'free' && !(c.plan_id && c.plan_id !== 'free'),
+  vencida: (c) => c.vigente === 'free' && !!c.plan_id && c.plan_id !== 'free',
+  pausada: (c) => !!c.deactivated_at,
+  baja: (c) => !!c.deletion_purge_at,
+};
 
 // Filtros del listado: sobreviven a los re-render y al ir y volver de una ficha
-const CL = { q: '', plan: '', estado: '', orden: 'alta' };
+const CL = { q: '', plan: '', estado: '', region: '', fuente: '', codigo: '', orden: 'alta' };
+function limpiarFiltrosClientes() {
+  Object.assign(CL, { q: '', plan: '', estado: '', region: '', fuente: '', codigo: '' });
+}
 const ORDENES = {
   alta: ['Alta más reciente', (a, b) => ms(b.created_at) - ms(a.created_at)],
   actividad: ['Última actividad', (a, b) => (ultimaActividad(b) ?? 0) - (ultimaActividad(a) ?? 0)],
   revenue: ['Mayor revenue', (a, b) => b.revenue - a.revenue],
   uso: ['Más fotos', (a, b) => (b.cases + b.loose_photos) - (a.cases + a.loose_photos)],
+  vence: ['Vence antes', (a, b) => (ms(fuenteDe(a) && a.plan_expires_at) || Infinity) - (ms(fuenteDe(b) && b.plan_expires_at) || Infinity)],
   nombre: ['Nombre', (a, b) => String(a.name).localeCompare(String(b.name), 'es')],
 };
 
 function vistaClientes(d) {
   const cs = d.clientes ?? [];
-  const pagan = cs.filter((c) => estadoCliente(c).k === 'paga');
-  const trial = cs.filter((c) => estadoCliente(c).k === 'trial');
+  const pagan = cs.filter(ESTADO_PRED.paga);
+  const trial = cs.filter(ESTADO_PRED.trial);
   const activas = cs.filter((c) => (ultimaActividad(c) ?? 0) > Date.now() - 30 * DIA);
   const conDatos = cs.filter((c) => c.patients > 0);
   const revenue = cs.reduce((s, c) => s + c.revenue, 0);
-  const opt = (v, label, sel) => `<option value="${v}"${v === sel ? ' selected' : ''}>${label}</option>`;
+  const opt = (v, label, sel) => `<option value="${esc(v)}"${v === sel ? ' selected' : ''}>${esc(label)}</option>`;
+  const regiones = [...new Set(cs.map((c) => c.region).filter(Boolean))]
+    .sort((a, b) => String(NOMBRE_REGION.of(a)).localeCompare(String(NOMBRE_REGION.of(b)), 'es'));
+  const codigos = [...new Set(cs.map((c) => c.referral_code).filter(Boolean))].sort();
   return `
   <h1>Clientes</h1>
   <div class="grid">
@@ -868,27 +829,39 @@ function vistaClientes(d) {
   <div class="cl-tools">
     <input id="cl-q" type="search" placeholder="Buscar por clínica, dueño o email" value="${esc(CL.q).replace(/"/g, '&quot;')}"
       oninput="CL.q = this.value; pintarClientes()">
-    <select id="cl-plan" onchange="CL.plan = this.value; pintarClientes()">
-      ${opt('', 'Todos los planes', CL.plan)}${Object.entries(PLAN).map(([k, v]) => opt(k, v, CL.plan)).join('')}</select>
-    <select id="cl-estado" onchange="CL.estado = this.value; pintarClientes()">
-      ${opt('', 'Todos los estados', CL.estado)}${ESTADOS.map(([k, v]) => opt(k, v, CL.estado)).join('')}</select>
-    <select id="cl-orden" onchange="CL.orden = this.value; pintarClientes()">
-      ${Object.entries(ORDENES).map(([k, [label]]) => opt(k, label, CL.orden)).join('')}</select>
+    <select onchange="CL.plan = this.value; pintarClientes()">
+      ${opt('', 'Plan: todos', CL.plan)}${opt('pago', 'Con plan (sin Free)', CL.plan)}${Object.entries(PLAN).map(([k, v]) => opt(k, v, CL.plan)).join('')}</select>
+    <select onchange="CL.estado = this.value; pintarClientes()">
+      ${opt('', 'Estado: todos', CL.estado)}${ESTADOS.map(([k, v]) => opt(k, v, CL.estado)).join('')}</select>
+    <select onchange="CL.region = this.value; pintarClientes()">
+      ${opt('', 'Región: todas', CL.region)}${regiones.map((r) => opt(r, regionTxt(r), CL.region)).join('')}${opt('ninguna', 'Sin dato', CL.region)}</select>
+    <select onchange="CL.fuente = this.value; pintarClientes()">
+      ${opt('', 'Fuente: todas', CL.fuente)}${Object.entries(FUENTE).map(([k, v]) => opt(k, v, CL.fuente)).join('')}</select>
+    <select onchange="CL.codigo = this.value; pintarClientes()">
+      ${opt('', 'Código: todos', CL.codigo)}${opt('alguno', 'Con algún código', CL.codigo)}${opt('ninguno', 'Sin código', CL.codigo)}${codigos.map((k) => opt(k, k, CL.codigo)).join('')}</select>
+    <select onchange="CL.orden = this.value; pintarClientes()">
+      ${Object.entries(ORDENES).map(([k, [label]]) => opt(k, 'Orden: ' + label, CL.orden)).join('')}</select>
+    <button class="rowbtn" onclick="limpiarFiltrosClientes(); render()">Limpiar filtros</button>
   </div>
   <p class="tbl-note" id="cl-count" style="margin:8px 0 0;"></p>
   <div class="tbl-scroll"><table>
-    <thead><tr><th>Clínica</th><th>Plan</th><th>Estado</th><th>Equipo</th><th>Pacientes</th><th>Comparativas</th><th>Fotos sueltas</th><th>Última actividad</th><th>Revenue</th><th>Alta</th></tr></thead>
+    <thead><tr><th>Clínica</th><th>Plan</th><th>Estado</th><th>Región</th><th>Código</th><th>Equipo</th><th>Uso</th><th>Última actividad</th><th>Revenue</th><th>Alta</th></tr></thead>
     <tbody id="cl-tbody"></tbody>
-  </table></div>`;
+  </table></div>
+  <p class="tbl-note">La región es una estimación: sale de si cobra por Mercado Pago, del prefijo telefónico más frecuente entre sus pacientes o del dominio de país del email del dueño. Pasá el mouse sobre una región para ver de dónde salió.</p>`;
 }
 
 function filaCliente(c) {
   const e = estadoCliente(c);
+  const vence = c.vigente !== 'free' && c.plan_expires_at ? `<span class="sub">vence el ${fecha(c.plan_expires_at)}</span>` : '';
   return `<tr class="click" onclick="location.hash = '#/clientes/clinicas/${esc(c.id)}'">
-    <td><strong>${esc(c.name)}</strong><div class="sub">${esc(c.owner_email)}</div></td>
-    <td>${PLAN[c.vigente] ?? esc(c.vigente)}${c.vigente !== 'free' ? `<div class="sub">${FUENTE[c.plan_source] ?? '—'}</div>` : ''}</td>
-    <td class="${e.cls}">${e.label}</td>
-    <td>${c.members}</td><td>${c.patients}</td><td>${c.cases}</td><td>${c.loose_photos}</td>
+    <td><a href="#/clientes/clinicas/${esc(c.id)}" style="color:#0066cc; text-decoration:none; font-weight:600;">${esc(c.name)}</a><span class="sub">${esc(c.owner_email)}</span></td>
+    <td style="white-space:nowrap;">${PLAN[c.vigente] ?? esc(c.vigente)}${c.vigente !== 'free' ? `<span class="sub">${FUENTE[c.plan_source] ?? 'sin fuente'}</span>` : ''}</td>
+    <td class="${e.cls}" style="white-space:nowrap;">${e.label}${vence}</td>
+    <td${c.region ? ` title="Estimada por: ${esc(REGION_SRC[c.region_src] ?? '')}"` : ' class="muted"'} style="white-space:nowrap;">${regionTxt(c.region)}</td>
+    <td>${c.referral_code ? `<strong>${esc(c.referral_code)}</strong><span class="sub">${esc(c.referrer_name ?? '')}</span>` : '—'}</td>
+    <td>${c.members}</td>
+    <td style="white-space:nowrap;">${c.patients} pac.<span class="sub">${c.cases} comp. · ${c.loose_photos} fotos</span></td>
     <td>${hace(ultimaActividad(c))}</td>
     <td>${c.revenue ? plata(c.revenue) : '—'}</td>
     <td>${fecha(c.created_at)}</td></tr>`;
@@ -900,13 +873,18 @@ function pintarClientes() {
   const q = CL.q.trim().toLowerCase();
   const lista = (DATOS?.clientes ?? []).filter((c) =>
     (!q || [c.name, c.owner_name, c.owner_email].some((x) => String(x ?? '').toLowerCase().includes(q)))
-    && (!CL.plan || c.vigente === CL.plan)
-    && (!CL.estado || estadoCliente(c).k === CL.estado)).sort(ORDENES[CL.orden][1]);
+    && (!CL.plan || (CL.plan === 'pago' ? c.vigente !== 'free' : c.vigente === CL.plan))
+    && (!CL.estado || ESTADO_PRED[CL.estado](c))
+    && (!CL.region || (CL.region === 'ninguna' ? !c.region : c.region === CL.region))
+    && (!CL.fuente || fuenteDe(c) === CL.fuente)
+    && (!CL.codigo || (CL.codigo === 'alguno' ? !!c.referral_code
+      : CL.codigo === 'ninguno' ? !c.referral_code : c.referral_code === CL.codigo)))
+    .sort(ORDENES[CL.orden][1]);
   tb.innerHTML = lista.map(filaCliente).join('')
     || '<tr><td colspan="10" class="empty">Ninguna clínica coincide con el filtro</td></tr>';
   const total = (DATOS?.clientes ?? []).length;
   $('cl-count').textContent = lista.length === total
-    ? `${total} clínicas. Tocá una fila para abrir su ficha.`
+    ? `${total} clínicas. Tocá una clínica para abrir su ficha.`
     : `${lista.length} de ${total} clínicas.`;
 }
 
@@ -923,7 +901,7 @@ function listasAtencion(d) {
       extra: ['Vence', (c) => `${fecha(c.plan_expires_at)} · ${hace(c.plan_expires_at)}`] },
     { titulo: '💤 Pagan y no usan la app hace 30 días',
       nota: 'Riesgo de baja: están pagando sin cargar contenido ni iniciar sesión.',
-      filas: cs.filter((c) => estadoCliente(c).k === 'paga' && (ultimaActividad(c) ?? 0) < ahora - 30 * DIA),
+      filas: cs.filter((c) => ESTADO_PRED.paga(c) && (ultimaActividad(c) ?? 0) < ahora - 30 * DIA),
       extra: ['Última actividad', (c) => hace(ultimaActividad(c))] },
     { titulo: '🚪 Pausadas o con baja agendada',
       nota: 'La pausa es reversible; la baja se ejecuta sola en la fecha indicada si no la cancelan.',
@@ -962,7 +940,9 @@ function fichaCliente(d, id) {
   <p style="margin:14px 0 0;"><a href="#/clientes/clinicas" style="color:#0066cc; font-size:13px; text-decoration:none;">← Volver a Clientes</a></p>
   <h1 style="margin-top:8px;">${esc(c.name)} <span class="pill ${e.cls}">${e.label}</span></h1>
   <p style="font-size:13px; color:#666; margin-bottom:6px;">Dueño: <strong>${esc(c.owner_name ?? 'sin nombre')}</strong> ·
-    ${c.owner_email ? `<a href="mailto:${esc(c.owner_email)}" style="color:#0066cc;">${esc(c.owner_email)}</a>` : 'sin email'}</p>
+    ${c.owner_email ? `<a href="mailto:${esc(c.owner_email)}" style="color:#0066cc;">${esc(c.owner_email)}</a>` : 'sin email'} ·
+    Región: ${c.region ? `${regionTxt(c.region)} <span class="muted">(estimada por ${esc(REGION_SRC[c.region_src] ?? '')})</span>` : '<span class="muted">sin dato</span>'}
+    ${c.referral_code ? ` · Entró con el código <strong>${esc(c.referral_code)}</strong>` : ''}</p>
   <div class="grid">
     <div class="card"><div class="card-title">Plan vigente</div>
       <div class="card-value" style="font-size:22px;">${PLAN[c.vigente] ?? esc(c.vigente)}</div>
