@@ -171,41 +171,99 @@ function simular() {
     : `Ejemplo con ${pct}% durante ${meses} meses sobre el precio de lista mensual del canal directo en pesos, suponiendo que cada referido paga todos los meses.`;
 }
 // Número de la tabla de planes → click muestra las clínicas que lo componen
-const num = (n, filtro, titulo) => n > 0
-  ? `<button class="numlink" onclick="verClinicas('${filtro}', '${String(titulo).replace(/'/g, '&#39;')}')">${n}</button>`
+const num = (n, filtro) => n > 0
+  ? `<button class="numlink" onclick="verClinicas('${filtro}')">${n}</button>`
   : String(n);
 const FUENTE = { apple: '🍎 Apple', google: '🤖 Google', direct: '💳 Mercado Pago', promo: '🎁 Promo/Referido' };
 const PLAN = { free: 'Free', profesional: 'Profesional', clinica: 'Clínica', clinica_pro: 'Clínica Pro' };
-// Mismos criterios que la función dashboard-referrals: vigente ya trae el
-// vencimiento aplicado; trial = plan_is_trial con fuente de cobro real;
-// promo = plan_source 'promo'.
-function verClinicas(filtro, titulo) {
-  const [tipo, valor] = filtro.split(':');
-  const pago = (o) => ['apple', 'google', 'direct'].includes(o.plan_source);
-  const lista = (DATOS?.orgs ?? []).filter((o) => {
-    if (tipo === 'plan') return o.vigente === valor;
-    if (tipo === 'pago') return o.vigente === valor && pago(o) && !o.plan_is_trial;
-    if (tipo === 'trial') return o.vigente === valor && pago(o) && o.plan_is_trial;
-    if (tipo === 'promo') return o.vigente === valor && o.plan_source === 'promo';
-    if (tipo === 'nofuente') return o.vigente === valor && !pago(o) && o.plan_source !== 'promo';
-    if (tipo === 'src') return o.vigente !== 'free' && o.plan_source === valor;
-    return false;
-  });
+// ── Detalle de clínicas (debajo de las tablas de Métricas) ─────────────────
+// Un número de las tablas abre el detalle con los filtros ya puestos; desde
+// ahí se pueden cambiar. Trabaja sobre d.clientes (mismas organizaciones que
+// d.orgs, con `vigente` resuelto por la función) para tener código y región.
+// Criterios iguales a dashboard-referrals: paga = fuente de cobro real sin
+// trial; trial de tienda = esa fuente con la marca; por referido = 'promo'.
+// La fuente solo cuenta con plan vigente: una Free puede conservar el
+// plan_source de una suscripción ya vencida.
+const DET = { plan: '', region: '', fuente: '', codigo: '', sit: '' };
+const fuenteDe = (c) => (c.vigente === 'free' ? '' : (c.plan_source ?? ''));
+const situacionDe = (c) => c.vigente === 'free' ? ''
+  : conCobro(c) ? (c.plan_is_trial ? 'trial' : 'paga')
+  : c.plan_source === 'promo' ? 'promo' : '';
+const NOMBRE_REGION = new Intl.DisplayNames(['es'], { type: 'region' });
+const bandera = (iso) => iso.replace(/./g, (ch) => String.fromCodePoint(127397 + ch.charCodeAt(0)));
+const regionTxt = (iso) => iso ? `${bandera(iso)} ${NOMBRE_REGION.of(iso) ?? iso}` : 'Sin dato';
+const REGION_SRC = { mp: 'cobra por Mercado Pago', telefono: 'teléfonos de sus pacientes', email: 'dominio del email' };
+
+function verClinicas(filtro) {
+  const [tipo, valor] = String(filtro).split(':');
+  Object.assign(DET, { plan: '', region: '', fuente: '', codigo: '', sit: '' });
+  if (tipo === 'plan') DET.plan = valor;
+  if (tipo === 'conplan') DET.plan = 'pago';
+  if (tipo === 'pago') { DET.plan = valor; DET.sit = 'paga'; }
+  if (tipo === 'trial') { DET.plan = valor; DET.sit = 'trial'; }
+  if (tipo === 'promo') { DET.plan = valor; DET.sit = 'promo'; }
+  if (tipo === 'nofuente') { DET.plan = valor; DET.fuente = 'ninguna'; }
+  if (tipo === 'src') DET.fuente = valor;
+  // 'todas' → sin filtros
+  const cs = DATOS?.clientes ?? [];
+  const opt = (v, label, sel) => `<option value="${esc(v)}"${v === sel ? ' selected' : ''}>${esc(label)}</option>`;
+  const regiones = [...new Set(cs.map((c) => c.region).filter(Boolean))]
+    .sort((a, b) => String(NOMBRE_REGION.of(a)).localeCompare(String(NOMBRE_REGION.of(b)), 'es'));
+  const codigos = [...new Set(cs.map((c) => c.referral_code).filter(Boolean))].sort();
+  const sel = (id, campo, opciones) =>
+    `<select id="${id}" onchange="DET.${campo} = this.value; pintarDetalle()">${opciones}</select>`;
   const box = $('plan-detalle');
   box.innerHTML = `
-    <h2><span>${esc(titulo)} · ${lista.length} clínica${lista.length === 1 ? '' : 's'}</span>
+    <h2><span id="det-titulo"></span>
       <button class="rowbtn" onclick="$('plan-detalle').innerHTML = ''">Cerrar</button></h2>
-    <table>
-      <thead><tr><th>Clínica</th><th>Plan vigente</th><th>Fuente</th><th>Trial</th><th>Vence</th><th>Creada</th></tr></thead>
-      <tbody>${lista.map((o) => `<tr>
-        <td><a href="#/clientes/clinicas/${esc(o.id)}" style="color:#0066cc; text-decoration:none;">${esc(o.name)}</a></td><td>${PLAN[o.vigente] ?? esc(o.vigente)}</td>
-        <td>${o.vigente === 'free' ? '—' : (FUENTE[o.plan_source] ?? esc(o.plan_source))}</td>
-        <td>${o.vigente !== 'free' && o.plan_is_trial ? 'sí' : '—'}</td>
-        <td>${o.vigente !== 'free' && o.plan_expires_at ? fecha(o.plan_expires_at) : '—'}</td>
-        <td>${fecha(o.created_at)}</td></tr>`).join('') || '<tr><td colspan="6">Sin clínicas</td></tr>'}
-      </tbody>
-    </table>`;
+    <div class="cl-tools" style="margin-top:0;">
+      ${sel('det-plan', 'plan', opt('', 'Plan: todos', DET.plan) + opt('pago', 'Con plan (sin Free)', DET.plan)
+        + Object.entries(PLAN).map(([k, v]) => opt(k, v, DET.plan)).join(''))}
+      ${sel('det-sit', 'sit', opt('', 'Situación: todas', DET.sit) + opt('paga', 'Pagas', DET.sit)
+        + opt('trial', 'En trial de tienda', DET.sit) + opt('promo', 'En trial por referido', DET.sit))}
+      ${sel('det-region', 'region', opt('', 'Región: todas', DET.region)
+        + regiones.map((r) => opt(r, regionTxt(r), DET.region)).join('') + opt('ninguna', 'Sin dato', DET.region))}
+      ${sel('det-fuente', 'fuente', opt('', 'Fuente: todas', DET.fuente)
+        + Object.entries(FUENTE).map(([k, v]) => opt(k, v, DET.fuente)).join('') + opt('ninguna', 'Con plan y sin fuente', DET.fuente))}
+      ${sel('det-codigo', 'codigo', opt('', 'Código: todos', DET.codigo) + opt('alguno', 'Con algún código', DET.codigo)
+        + opt('ninguno', 'Sin código', DET.codigo) + codigos.map((k) => opt(k, k, DET.codigo)).join(''))}
+      <button class="rowbtn" onclick="verClinicas('todas')">Limpiar filtros</button>
+    </div>
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>Clínica</th><th>Plan vigente</th><th>Fuente</th><th>Situación</th><th>Región</th><th>Código</th><th>Vence</th><th>Creada</th></tr></thead>
+      <tbody id="det-tbody"></tbody>
+    </table></div>
+    <p class="tbl-note">La región es una estimación: sale de si cobra por Mercado Pago, del prefijo telefónico más frecuente entre sus pacientes o del dominio de país del email del dueño. Pasá el mouse sobre una región para ver de dónde salió.</p>`;
+  pintarDetalle();
   box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function pintarDetalle() {
+  const tb = $('det-tbody');
+  if (!tb) return;
+  const SIT = { paga: '<span class="ok">✓ Paga</span>', trial: '<span class="warn">⏳ Trial de tienda</span>', promo: '🎁 Trial por referido' };
+  const lista = (DATOS?.clientes ?? []).filter((c) =>
+    (!DET.plan || (DET.plan === 'pago' ? c.vigente !== 'free' : c.vigente === DET.plan))
+    && (!DET.sit || situacionDe(c) === DET.sit)
+    && (!DET.region || (DET.region === 'ninguna' ? !c.region : c.region === DET.region))
+    && (!DET.fuente || (DET.fuente === 'ninguna' ? (c.vigente !== 'free' && !fuenteDe(c)) : fuenteDe(c) === DET.fuente))
+    && (!DET.codigo || (DET.codigo === 'alguno' ? !!c.referral_code
+      : DET.codigo === 'ninguno' ? !c.referral_code : c.referral_code === DET.codigo)))
+    .sort((a, b) => String(a.name).localeCompare(String(b.name), 'es'));
+  const total = (DATOS?.clientes ?? []).length;
+  $('det-titulo').textContent = lista.length === total
+    ? `Todas las clínicas · ${total}`
+    : `${lista.length} de ${total} clínicas`;
+  tb.innerHTML = lista.map((c) => `<tr>
+    <td><a href="#/clientes/clinicas/${esc(c.id)}" style="color:#0066cc; text-decoration:none;">${esc(c.name)}</a><span class="sub">${esc(c.owner_email)}</span></td>
+    <td>${PLAN[c.vigente] ?? esc(c.vigente)}</td>
+    <td>${FUENTE[fuenteDe(c)] ?? '—'}</td>
+    <td>${SIT[situacionDe(c)] ?? '—'}</td>
+    <td${c.region ? ` title="Estimada por: ${esc(REGION_SRC[c.region_src] ?? '')}"` : ' class="muted"'}>${regionTxt(c.region)}</td>
+    <td>${c.referral_code ? `<strong>${esc(c.referral_code)}</strong><span class="sub">${esc(c.referrer_name ?? '')}</span>` : '—'}</td>
+    <td>${c.vigente !== 'free' && c.plan_expires_at ? fecha(c.plan_expires_at) : '—'}</td>
+    <td>${fecha(c.created_at)}</td></tr>`).join('')
+    || '<tr><td colspan="8" class="empty">Ninguna clínica coincide con los filtros</td></tr>';
 }
 
 // Reparto de "vigentes" por plan, con los mismos criterios que
@@ -249,7 +307,10 @@ function tablaPlanes(d) {
         <td>${num(f.promo, 'promo:' + f.k, PLAN[f.k] + ' por promo/referido')}</td>
         ${celdaSin(f)}</tr>`).join('')}
     </tbody>
-    <tfoot><tr><td>Total con plan</td><td>${t.total}</td><td>${t.pagas}</td><td>${t.trial}</td><td>${t.promo}</td>${huerfanas ? `<td>${t.sin}</td>` : ''}</tr></tfoot>
+    <tfoot>
+      <tr><td>Total con plan</td><td>${num(t.total, 'conplan')}</td><td>${t.pagas}</td><td>${t.trial}</td><td>${t.promo}</td>${huerfanas ? `<td>${t.sin}</td>` : ''}</tr>
+      <tr><td>Total general</td><td>${num(t.total + free, 'todas')}</td><td colspan="${huerfanas ? 4 : 3}" style="font-weight:400; color:#999;">todas las clínicas registradas, con y sin plan</td></tr>
+    </tfoot>
   </table>
   <p class="tbl-note${huerfanas ? ' warn' : ''}">${huerfanas
     ? `Pagas + trial store + trial referido no llega a vigentes: ${t.sin} clínica${t.sin === 1 ? '' : 's'} tiene${t.sin === 1 ? '' : 'n'} plan vigente sin fuente registrada.`
