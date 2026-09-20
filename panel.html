@@ -102,6 +102,23 @@
   .cl-tools { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
   .cl-tools input, .cl-tools select { width: auto; margin: 0; padding: 9px 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; background: white; }
   .cl-tools input { flex: 1 1 240px; }
+  /* gráficos de clientes */
+  .gcharts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 14px; margin: 12px 0; }
+  .gcard { margin: 0; }
+  .gcard h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  .gnote { font-size: 12px; color: #999; margin-top: 10px; }
+  .gwrap .mark { cursor: pointer; }
+  .gwrap .mark:hover { opacity: .82; }
+  .gleg { width: auto; min-width: 190px; margin: 0; box-shadow: none; background: none; }
+  .gleg td { border: none; padding: 5px 10px 5px 0; font-size: 13px; color: #333; }
+  .gleg td:nth-child(2) { font-weight: 600; text-align: right; }
+  .gleg td:nth-child(3) { color: #999; text-align: right; }
+  .gleg .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; }
+  .gleg tr.click:hover td { background: none; color: #0066cc; }
+  .gstack { display: flex; gap: 2px; height: 26px; }
+  .gstack > div:first-child { border-radius: 4px 0 0 4px; }
+  .gstack > div:last-child { border-radius: 0 4px 4px 0; }
+  .gstack > div:only-child { border-radius: 4px; }
 </style>
 </head>
 <body>
@@ -382,7 +399,7 @@ async function cargar(token) {
 // sin login, y el HTML en sí no contiene datos.
 const PAGINAS = [
   { id: 'resumen', label: '📈 Resumen', tabs: [['metricas', 'Métricas'], ['revenue', 'Revenue']] },
-  { id: 'clientes', label: '👥 Clientes', tabs: [['clinicas', 'Clínicas'], ['atencion', 'Requieren atención']] },
+  { id: 'clientes', label: '👥 Clientes', tabs: [['clinicas', 'Clínicas'], ['graficos', 'Gráficos'], ['atencion', 'Requieren atención']] },
   { id: 'referidos', label: '🤝 Referidos', tabs: [['codigos', 'Códigos'], ['canjes', 'Canjes'], ['variables', 'Variables del programa']] },
   { id: 'afiliados', label: '🧑‍💼 Afiliados', tabs: [['afiliados', 'Afiliados'], ['liquidacion', 'Liquidación y pagos'], ['simulador', 'Simulador']] },
   { id: 'pagos', label: '💳 Pagos', tabs: [['eventos', 'Pagos directos'], ['reembolsos', 'Reembolsos y bajas']] },
@@ -452,6 +469,7 @@ const VISTAS = {
   <h1>Revenue histórico</h1>
   ${revenueSection(d.revenue ?? [])}`,
   'clientes/clinicas': (d, extra) => extra ? fichaCliente(d, extra) : vistaClientes(d),
+  'clientes/graficos': (d) => vistaGraficos(d),
   'clientes/atencion': (d) => vistaAtencion(d),
   'referidos/codigos': (d) => { const ref = d.referidos; return `
   <h1 id="referidos">Referidos</h1>
@@ -666,6 +684,7 @@ const DESPUES = {
   'resumen/revenue': () => wireRevenueHover(),
   'afiliados/simulador': () => simular(),
   'clientes/clinicas': (d, extra) => extra ? cargarFicha(extra) : pintarClientes(),
+  'clientes/graficos': () => wireGraficos(),
 };
 
 // Formulario de códigos y tabla de códigos: se usan en dos lugares. En
@@ -786,9 +805,9 @@ const ESTADO_PRED = {
 };
 
 // Filtros del listado: sobreviven a los re-render y al ir y volver de una ficha
-const CL = { q: '', plan: '', estado: '', region: '', fuente: '', codigo: '', orden: 'alta' };
+const CL = { q: '', plan: '', estado: '', region: '', fuente: '', codigo: '', seg: '', orden: 'alta' }; // seg: segmento elegido en Gráficos
 function limpiarFiltrosClientes() {
-  Object.assign(CL, { q: '', plan: '', estado: '', region: '', fuente: '', codigo: '' });
+  Object.assign(CL, { q: '', plan: '', estado: '', region: '', fuente: '', codigo: '', seg: '' });
 }
 const ORDENES = {
   alta: ['Alta más reciente', (a, b) => ms(b.created_at) - ms(a.created_at)],
@@ -843,6 +862,8 @@ function vistaClientes(d) {
       ${Object.entries(ORDENES).map(([k, [label]]) => opt(k, 'Orden: ' + label, CL.orden)).join('')}</select>
     <button class="rowbtn" onclick="limpiarFiltrosClientes(); render()">Limpiar filtros</button>
   </div>
+  ${CL.seg && segmento(CL.seg) ? `<p style="margin:10px 0 0; font-size:13px;"><span class="pill">Desde Gráficos · ${esc(segmento(CL.seg).label)}</span>
+    <button class="rowbtn" onclick="CL.seg = ''; render()">Quitar</button></p>` : ''}
   <p class="tbl-note" id="cl-count" style="margin:8px 0 0;"></p>
   <div class="tbl-scroll"><table>
     <thead><tr><th>Clínica</th><th>Plan</th><th>Estado</th><th>Región</th><th>Código</th><th>Equipo</th><th>Uso</th><th>Última actividad</th><th>Revenue</th><th>Alta</th></tr></thead>
@@ -877,6 +898,7 @@ function pintarClientes() {
     && (!CL.estado || ESTADO_PRED[CL.estado](c))
     && (!CL.region || (CL.region === 'ninguna' ? !c.region : c.region === CL.region))
     && (!CL.fuente || fuenteDe(c) === CL.fuente)
+    && (!CL.seg || (segmento(CL.seg)?.pred(c) ?? true))
     && (!CL.codigo || (CL.codigo === 'alguno' ? !!c.referral_code
       : CL.codigo === 'ninguno' ? !c.referral_code : c.referral_code === CL.codigo)))
     .sort(ORDENES[CL.orden][1]);
@@ -886,6 +908,167 @@ function pintarClientes() {
   $('cl-count').textContent = lista.length === total
     ? `${total} clínicas. Tocá una clínica para abrir su ficha.`
     : `${lista.length} de ${total} clínicas.`;
+}
+
+// ── Clientes → Gráficos ──────────────────────────────────────────────────────
+// SVG inline, sin dependencias. Paleta categórica validada para daltonismo
+// (azul, naranja, aqua, amarillo); el color sigue al plan, no a su tamaño.
+// Dos de esos tonos tienen poco contraste sobre blanco, por eso cada gráfico
+// muestra siempre los números en texto. Tocar una porción o una barra abre el
+// listado de Clínicas filtrado por ese segmento.
+const PLAN_COLOR = { free: '#2a78d6', profesional: '#eb6834', clinica: '#1baf7a', clinica_pro: '#eda100' };
+const diasSinUso = (c) => { const u = ultimaActividad(c); return u ? Math.floor((Date.now() - u) / DIA) : Infinity; };
+const SEGMENTOS = {
+  pac: { titulo: 'Clínicas según pacientes cargados', cortes: [
+    ['0', 'Sin pacientes', (c) => c.patients === 0],
+    ['1-5', '1 a 5', (c) => c.patients >= 1 && c.patients <= 5],
+    ['6-20', '6 a 20', (c) => c.patients >= 6 && c.patients <= 20],
+    ['21-50', '21 a 50', (c) => c.patients >= 21 && c.patients <= 50],
+    ['51+', 'Más de 50', (c) => c.patients > 50]] },
+  uso: { titulo: 'Clínicas según días desde el último uso', cortes: [
+    ['7', 'Hasta 7 días', (c) => diasSinUso(c) <= 7],
+    ['30', '8 a 30 días', (c) => diasSinUso(c) > 7 && diasSinUso(c) <= 30],
+    ['90', '31 a 90 días', (c) => diasSinUso(c) > 30 && diasSinUso(c) <= 90],
+    ['mas', 'Más de 90 días', (c) => diasSinUso(c) > 90]] },
+  equipo: { titulo: 'Clínicas según tamaño del equipo', cortes: [
+    ['1', '1 usuario', (c) => c.members <= 1],
+    ['2+', 'Más de 1 usuario', (c) => c.members > 1]] },
+};
+const segmento = (key) => {
+  const [g, k] = String(key).split(':');
+  const corte = SEGMENTOS[g]?.cortes.find((x) => x[0] === k);
+  return corte ? { label: `${SEGMENTOS[g].titulo.replace('Clínicas según ', '')}: ${corte[1]}`, pred: corte[2] } : null;
+};
+function irASegmento(key) {
+  limpiarFiltrosClientes();
+  CL.seg = key;
+  location.hash = '#/clientes/clinicas';
+}
+const pctTxt = (n, total) => (total ? Math.round((n / total) * 100) : 0) + '%';
+const clinicasTxt = (n) => `${n} clínica${n === 1 ? '' : 's'}`;
+
+function graficoPlanes(cs) {
+  const total = cs.length;
+  const datos = Object.keys(PLAN).map((k) => ({ k, n: cs.filter((c) => c.vigente === k).length })).filter((x) => x.n > 0);
+  const R = 84, r = 52, cx = 100, cy = 100;
+  const pt = (rad, a) => [cx + rad * Math.sin(a), cy - rad * Math.cos(a)];
+  let a0 = 0;
+  const arcos = datos.map((x) => {
+    const a1 = a0 + (x.n / (total || 1)) * Math.PI * 2;
+    const tip = `${PLAN[x.k]}: ${clinicasTxt(x.n)} (${pctTxt(x.n, total)})`;
+    let d;
+    if (datos.length === 1) { // un círculo completo no se puede dibujar con un solo arco
+      d = `M${cx},${cy - R} A${R},${R} 0 1 1 ${cx - 0.01},${cy - R} Z M${cx},${cy - r} A${r},${r} 0 1 0 ${cx + 0.01},${cy - r} Z`;
+    } else {
+      const g = a1 - a0 > Math.PI ? 1 : 0;
+      const [x0, y0] = pt(R, a0), [x1, y1] = pt(R, a1), [x2, y2] = pt(r, a1), [x3, y3] = pt(r, a0);
+      d = `M${x0},${y0} A${R},${R} 0 ${g} 1 ${x1},${y1} L${x2},${y2} A${r},${r} 0 ${g} 0 ${x3},${y3} Z`;
+    }
+    a0 = a1;
+    return `<path d="${d}" fill="${PLAN_COLOR[x.k]}" fill-rule="evenodd" stroke="white" stroke-width="2" class="mark"
+      data-tip="${esc(tip)}" onclick="irAClientes('plan:${x.k}')"></path>`;
+  }).join('');
+  return `<div class="chart-card gcard">
+    <h2>Clínicas por plan vigente</h2>
+    <div class="chart-wrap gwrap" style="display:flex; gap:20px; align-items:center; flex-wrap:wrap;">
+      <svg viewBox="0 0 200 200" style="width:200px; flex:0 0 200px;" role="img" aria-label="Clínicas por plan vigente">
+        ${arcos}
+        <text x="${cx}" y="${cy - 2}" text-anchor="middle" font-size="30" font-weight="600" fill="#1a1a1a">${total}</text>
+        <text x="${cx}" y="${cy + 17}" text-anchor="middle" font-size="11" fill="#666">clínicas</text>
+      </svg>
+      <table class="gleg"><tbody>${datos.map((x) => `<tr class="click" onclick="irAClientes('plan:${x.k}')">
+        <td><span class="sw" style="background:${PLAN_COLOR[x.k]}"></span>${PLAN[x.k]}</td>
+        <td>${x.n}</td><td>${pctTxt(x.n, total)}</td></tr>`).join('')}</tbody></table>
+      <div class="chart-tip"></div>
+    </div>
+    <p class="gnote">Plan con el vencimiento ya aplicado: un trial o una cortesía vencidos cuentan como Free.</p>
+  </div>`;
+}
+
+function graficoBarras(grupo, cs, nota) {
+  const { titulo, cortes } = SEGMENTOS[grupo];
+  const datos = cortes.map(([k, label, pred]) => ({ k, label, n: cs.filter(pred).length }));
+  const W = 440, H = 230, padL = 34, padR = 10, padT = 22, padB = 34;
+  const max = Math.max(1, ...datos.map((x) => x.n));
+  // paso «redondo» (1, 2, 5, 10, 20…) para que la escala se lea de un vistazo
+  const bruto = max / 4, mag = Math.pow(10, Math.floor(Math.log10(Math.max(bruto, 1))));
+  const paso = Math.max(1, [1, 2, 5, 10].map((m) => m * mag).find((v) => v >= bruto));
+  const tope = paso * 4;
+  const y = (v) => H - padB - (H - padT - padB) * v / tope;
+  const ancho = (W - padL - padR) / datos.length, bw = Math.min(46, ancho * 0.55);
+  const grid = [1, 2, 3, 4].map((i) => `<line x1="${padL}" y1="${y(paso * i)}" x2="${W - padR}" y2="${y(paso * i)}" stroke="#eee"/>
+    <text x="${padL - 6}" y="${y(paso * i) + 4}" text-anchor="end" font-size="11" fill="#999">${paso * i}</text>`).join('');
+  const barras = datos.map((x, i) => {
+    const cxb = padL + ancho * i + ancho / 2, top = y(x.n), h = H - padB - top, rr = Math.min(4, h);
+    const tip = `${x.label}: ${clinicasTxt(x.n)} (${pctTxt(x.n, cs.length)})`;
+    // extremo redondeado solo arriba; la base queda apoyada en el eje
+    const forma = h > 0 ? `<path d="M${cxb - bw / 2},${H - padB} V${top + rr} Q${cxb - bw / 2},${top} ${cxb - bw / 2 + rr},${top} H${cxb + bw / 2 - rr} Q${cxb + bw / 2},${top} ${cxb + bw / 2},${top + rr} V${H - padB} Z" fill="#2a78d6"/>` : '';
+    return `<g class="mark" data-tip="${esc(tip)}" onclick="irASegmento('${grupo}:${x.k}')">
+      <rect x="${padL + ancho * i}" y="${padT - 14}" width="${ancho}" height="${H - padT + 14}" fill="transparent"/>
+      ${forma}
+      <text x="${cxb}" y="${top - 6}" text-anchor="middle" font-size="12" font-weight="600" fill="#1a1a1a">${x.n}</text>
+      <text x="${cxb}" y="${H - padB + 16}" text-anchor="middle" font-size="11" fill="#666">${esc(x.label)}</text></g>`;
+  }).join('');
+  return `<div class="chart-card gcard">
+    <h2>${titulo}</h2>
+    <div class="chart-wrap gwrap">
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%; display:block;" role="img" aria-label="${esc(titulo)}">
+        ${grid}<line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="#ccc"/>${barras}
+      </svg>
+      <div class="chart-tip"></div>
+    </div>
+    <p class="gnote">${nota}</p>
+  </div>`;
+}
+
+function graficoEquipo(cs) {
+  const { titulo, cortes } = SEGMENTOS.equipo;
+  const color = ['#2a78d6', '#eb6834'];
+  const datos = cortes.map(([k, label, pred], i) => ({ k, label, n: cs.filter(pred).length, color: color[i] }));
+  const total = cs.length || 1;
+  const usuarios = cs.reduce((s, c) => s + (c.members || 0), 0);
+  return `<div class="chart-card gcard">
+    <h2>${titulo}</h2>
+    <div class="chart-wrap gwrap">
+      <div class="gstack">${datos.filter((x) => x.n > 0).map((x) => `<div class="mark" style="flex:${x.n} 1 0; background:${x.color};"
+        data-tip="${esc(`${x.label}: ${clinicasTxt(x.n)} (${pctTxt(x.n, cs.length)})`)}" onclick="irASegmento('equipo:${x.k}')"></div>`).join('')}</div>
+      <table class="gleg" style="margin-top:14px;"><tbody>${datos.map((x) => `<tr class="click" onclick="irASegmento('equipo:${x.k}')">
+        <td><span class="sw" style="background:${x.color}"></span>${x.label}</td>
+        <td>${x.n}</td><td>${pctTxt(x.n, cs.length)}</td></tr>`).join('')}</tbody></table>
+      <div class="chart-tip"></div>
+    </div>
+    <p class="gnote">${usuarios} usuarios en total, ${(usuarios / total).toLocaleString('es-AR', { maximumFractionDigits: 1 })} por clínica en promedio. Los equipos de más de una persona son los candidatos naturales al plan Clínica.</p>
+  </div>`;
+}
+
+function vistaGraficos(d) {
+  const cs = d.clientes ?? [];
+  return `
+  <h1>Gráficos</h1>
+  <p style="color:#666; font-size:13px; margin:0 0 4px;">Sobre las ${cs.length} clínicas registradas. Tocá una porción o una barra para ver esas clínicas en el listado.</p>
+  <div class="gcharts">
+    ${graficoPlanes(cs)}
+    ${graficoBarras('pac', cs, 'Pacientes cargados en la app por cada clínica. Las que no cargaron ninguno todavía no llegaron a probarla.')}
+    ${graficoBarras('uso', cs, 'Días desde la última actividad: contenido cargado o un inicio de sesión de alguien del equipo.')}
+    ${graficoEquipo(cs)}
+  </div>`;
+}
+
+// Tooltip compartido: cualquier marca con data-tip dentro de un .gwrap
+function wireGraficos() {
+  document.querySelectorAll('.gwrap').forEach((wrap) => {
+    const tip = wrap.querySelector('.chart-tip');
+    wrap.addEventListener('mousemove', (ev) => {
+      const m = ev.target.closest('[data-tip]');
+      if (!m) { tip.style.display = 'none'; return; }
+      const box = wrap.getBoundingClientRect();
+      tip.textContent = m.dataset.tip;
+      tip.style.display = 'block';
+      tip.style.left = Math.max(0, Math.min(ev.clientX - box.left + 12, box.width - tip.offsetWidth - 4)) + 'px';
+      tip.style.top = Math.max(0, ev.clientY - box.top - 34) + 'px';
+    });
+    wrap.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  });
 }
 
 // ── Requieren atención ───────────────────────────────────────────────────────
