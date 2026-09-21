@@ -1103,7 +1103,9 @@ function listasAtencion(d) {
       extra: ['Alta', (c) => `${fecha(c.created_at)} · ${hace(c.created_at)}`] },
   ];
 }
-const clinicasEnAtencion = (d) => new Set(listasAtencion(d).flatMap((l) => l.filas.map((c) => c.id))).size;
+// Contador de la solapa: clínicas distintas en alguna lista + cuentas que no terminaron el alta
+const clinicasEnAtencion = (d) => new Set(listasAtencion(d).flatMap((l) => l.filas.map((c) => c.id))).size
+  + (d.sin_clinica ?? []).filter((u) => !u.deletion_purge_at).length;
 
 function vistaAtencion(d) {
   return `<h1>Requieren atención</h1>` + listasAtencion(d).map((l) => `
@@ -1116,7 +1118,28 @@ function vistaAtencion(d) {
       <td>${PLAN[c.vigente] ?? esc(c.vigente)}</td><td>${l.extra[1](c)}</td></tr>`).join('')
       || '<tr><td colspan="4" class="empty">Ninguna clínica en esta situación</td></tr>'}</tbody>
   </table></div>
-  <p class="tbl-note">${l.nota}</p>`).join('');
+  <p class="tbl-note">${l.nota}</p>`).join('') + cuentasSinClinica(d);
+}
+
+// Cuentas registradas que nunca crearon ni se unieron a una clínica (066): no
+// tienen ficha porque no son un cliente todavía; lo accionable es escribirles.
+function cuentasSinClinica(d) {
+  const PROV = { email: '✉️ Email', google: 'Google', apple: '🍎 Apple' };
+  const us = (d.sin_clinica ?? []).filter((u) => !u.deletion_purge_at);
+  const total = d.generales?.usuarios ?? 0;
+  return `
+  <h2 class="tbl-title">📝 Se registraron y no crearon ninguna clínica · ${us.length}</h2>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Nombre</th><th>Email</th><th>Se registró con</th><th>Alta</th><th>Último ingreso</th></tr></thead>
+    <tbody>${us.map((u) => `<tr>
+      <td>${esc(u.full_name ?? '—')}</td>
+      <td>${u.email ? `<a href="mailto:${esc(u.email)}" style="color:#0066cc; text-decoration:none;">${esc(u.email)}</a>` : '—'}</td>
+      <td>${PROV[u.provider] ?? esc(u.provider)}</td>
+      <td>${fecha(u.created_at)} · ${hace(u.created_at)}</td>
+      <td>${u.last_sign_in_at ? hace(u.last_sign_in_at) : 'nunca'}</td></tr>`).join('')
+      || '<tr><td colspan="5" class="empty">Todas las cuentas registradas pertenecen a una clínica</td></tr>'}</tbody>
+  </table></div>
+  <p class="tbl-note">Crearon la cuenta y abandonaron en el paso siguiente, el de crear o unirse a una clínica${total ? `: ${us.length} de ${total} cuentas registradas` : ''}. Los emails de quienes entraron con Apple pueden ser direcciones privadas de reenvío: les llega igual. No incluye cuentas con baja agendada.</p>`;
 }
 
 // ── Ficha de una clínica ─────────────────────────────────────────────────────
