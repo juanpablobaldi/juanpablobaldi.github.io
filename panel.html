@@ -448,7 +448,13 @@ const VISTAS = {
       <div class="card-sub">+${g.nuevas_30d} en los últimos 30 días</div></div>
     <div class="card"><div class="card-title">Usuarios totales</div>
       <div class="card-value">${g.usuarios ?? '—'}</div>
-      <div class="card-sub">personas registradas en ${g.clinicas} clínica${g.clinicas === 1 ? '' : 's'}</div></div>
+      <div class="card-sub">${(() => {
+        // Cuentas registradas (auth) vs. miembros de alguna clínica: la diferencia
+        // son personas que crearon la cuenta y abandonaron antes de crear o unirse a una clínica.
+        const enClinicas = (d.clientes ?? []).reduce((s, c) => s + (c.members || 0), 0);
+        const sin = Math.max(0, (g.usuarios ?? 0) - enClinicas);
+        return `cuentas registradas: ${enClinicas} en una clínica${sin ? ` · ${sin} sin clínica (no terminaron el alta)` : ''}`;
+      })()}</div></div>
     <div class="card"><div class="card-title">Ingreso mensual (MRR)</div>
       <div class="card-value">${plata(g.mrr)}</div>
       <div class="card-sub">${g.planes_pagos} plan${g.planes_pagos === 1 ? '' : 'es'} con cobro real (Apple/Google/directo)</div></div>
@@ -1037,7 +1043,7 @@ function graficoEquipo(cs) {
         <td>${x.n}</td><td>${pctTxt(x.n, cs.length)}</td></tr>`).join('')}</tbody></table>
       <div class="chart-tip"></div>
     </div>
-    <p class="gnote">${usuarios} usuarios en total, ${(usuarios / total).toLocaleString('es-AR', { maximumFractionDigits: 1 })} por clínica en promedio. Los equipos de más de una persona son los candidatos naturales al plan Clínica.</p>
+    <p class="gnote">${usuarios} usuarios dentro de clínicas, ${(usuarios / total).toLocaleString('es-AR', { maximumFractionDigits: 1 })} por clínica en promedio. Los equipos de más de una persona son los candidatos naturales al plan Clínica. No incluye las cuentas registradas que nunca crearon ni se unieron a una clínica.</p>
   </div>`;
 }
 
