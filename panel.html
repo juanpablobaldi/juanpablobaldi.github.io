@@ -207,6 +207,10 @@ const situacionDe = (c) => c.vigente === 'free' ? ''
 const NOMBRE_REGION = new Intl.DisplayNames(['es'], { type: 'region' });
 const bandera = (iso) => iso.replace(/./g, (ch) => String.fromCodePoint(127397 + ch.charCodeAt(0)));
 const regionTxt = (iso) => iso ? `${bandera(iso)} ${NOMBRE_REGION.of(iso) ?? iso}` : 'Sin dato';
+// Dispositivo: sale del User-Agent de las sesiones iniciadas (mig 067). Es «dónde
+// tiene sesión hoy», no el historial de instalación.
+const DISP = { ios: '🍎 iOS', android: '🤖 Android', 'android+ios': '🍎 iOS y 🤖 Android' };
+const dispTxt = (p) => DISP[p] ?? 'Sin dato';
 const REGION_SRC = { mp: 'cobra por Mercado Pago', telefono: 'teléfonos de sus pacientes', email: 'dominio del email' };
 
 function irAClientes(filtro) {
@@ -811,9 +815,9 @@ const ESTADO_PRED = {
 };
 
 // Filtros del listado: sobreviven a los re-render y al ir y volver de una ficha
-const CL = { q: '', plan: '', estado: '', region: '', fuente: '', codigo: '', seg: '', orden: 'alta' }; // seg: segmento elegido en Gráficos
+const CL = { q: '', plan: '', estado: '', region: '', disp: '', fuente: '', codigo: '', seg: '', orden: 'alta' }; // seg: segmento elegido en Gráficos
 function limpiarFiltrosClientes() {
-  Object.assign(CL, { q: '', plan: '', estado: '', region: '', fuente: '', codigo: '', seg: '' });
+  Object.assign(CL, { q: '', plan: '', estado: '', region: '', disp: '', fuente: '', codigo: '', seg: '' });
 }
 const ORDENES = {
   alta: ['Alta más reciente', (a, b) => ms(b.created_at) - ms(a.created_at)],
@@ -860,6 +864,8 @@ function vistaClientes(d) {
       ${opt('', 'Estado: todos', CL.estado)}${ESTADOS.map(([k, v]) => opt(k, v, CL.estado)).join('')}</select>
     <select onchange="CL.region = this.value; pintarClientes()">
       ${opt('', 'Región: todas', CL.region)}${regiones.map((r) => opt(r, regionTxt(r), CL.region)).join('')}${opt('ninguna', 'Sin dato', CL.region)}</select>
+    <select onchange="CL.disp = this.value; pintarClientes()">
+      ${opt('', 'Dispositivo: todos', CL.disp)}${opt('ios', 'Usa iOS', CL.disp)}${opt('android', 'Usa Android', CL.disp)}${opt('ninguno', 'Sin dato', CL.disp)}</select>
     <select onchange="CL.fuente = this.value; pintarClientes()">
       ${opt('', 'Fuente: todas', CL.fuente)}${Object.entries(FUENTE).map(([k, v]) => opt(k, v, CL.fuente)).join('')}</select>
     <select onchange="CL.codigo = this.value; pintarClientes()">
@@ -872,10 +878,10 @@ function vistaClientes(d) {
     <button class="rowbtn" onclick="CL.seg = ''; render()">Quitar</button></p>` : ''}
   <p class="tbl-note" id="cl-count" style="margin:8px 0 0;"></p>
   <div class="tbl-scroll"><table>
-    <thead><tr><th>Clínica</th><th>Plan</th><th>Estado</th><th>Región</th><th>Código</th><th>Equipo</th><th>Uso</th><th>Última actividad</th><th>Revenue</th><th>Alta</th></tr></thead>
+    <thead><tr><th>Clínica</th><th>Plan</th><th>Estado</th><th>Región</th><th>Dispositivo</th><th>Código</th><th>Equipo</th><th>Uso</th><th>Última actividad</th><th>Revenue</th><th>Alta</th></tr></thead>
     <tbody id="cl-tbody"></tbody>
   </table></div>
-  <p class="tbl-note">La región es una estimación: sale de si cobra por Mercado Pago, del prefijo telefónico más frecuente entre sus pacientes o del dominio de país del email del dueño. Pasá el mouse sobre una región para ver de dónde salió.</p>`;
+  <p class="tbl-note">La región es una estimación: sale de si cobra por Mercado Pago, del prefijo telefónico más frecuente entre sus pacientes o del dominio de país del email del dueño. Pasá el mouse sobre una región para ver de dónde salió. El dispositivo es donde el equipo tiene sesión iniciada hoy.</p>`;
 }
 
 function filaCliente(c) {
@@ -886,6 +892,7 @@ function filaCliente(c) {
     <td style="white-space:nowrap;">${PLAN[c.vigente] ?? esc(c.vigente)}${c.vigente !== 'free' ? `<span class="sub">${FUENTE[c.plan_source] ?? 'sin fuente'}</span>` : ''}</td>
     <td class="${e.cls}" style="white-space:nowrap;">${e.label}${vence}</td>
     <td${c.region ? ` title="Estimada por: ${esc(REGION_SRC[c.region_src] ?? '')}"` : ' class="muted"'} style="white-space:nowrap;">${regionTxt(c.region)}</td>
+    <td${c.platforms ? '' : ' class="muted"'} style="white-space:nowrap;">${dispTxt(c.platforms)}</td>
     <td>${c.referral_code ? `<strong>${esc(c.referral_code)}</strong><span class="sub">${esc(c.referrer_name ?? '')}</span>` : '—'}</td>
     <td>${c.members}</td>
     <td style="white-space:nowrap;">${c.patients} pac.<span class="sub">${c.cases} comp. · ${c.loose_photos} fotos</span></td>
@@ -903,13 +910,14 @@ function pintarClientes() {
     && (!CL.plan || (CL.plan === 'pago' ? c.vigente !== 'free' : c.vigente === CL.plan))
     && (!CL.estado || ESTADO_PRED[CL.estado](c))
     && (!CL.region || (CL.region === 'ninguna' ? !c.region : c.region === CL.region))
+    && (!CL.disp || (CL.disp === 'ninguno' ? !c.platforms : String(c.platforms ?? '').includes(CL.disp)))
     && (!CL.fuente || fuenteDe(c) === CL.fuente)
     && (!CL.seg || (segmento(CL.seg)?.pred(c) ?? true))
     && (!CL.codigo || (CL.codigo === 'alguno' ? !!c.referral_code
       : CL.codigo === 'ninguno' ? !c.referral_code : c.referral_code === CL.codigo)))
     .sort(ORDENES[CL.orden][1]);
   tb.innerHTML = lista.map(filaCliente).join('')
-    || '<tr><td colspan="10" class="empty">Ninguna clínica coincide con el filtro</td></tr>';
+    || '<tr><td colspan="11" class="empty">Ninguna clínica coincide con el filtro</td></tr>';
   const total = (DATOS?.clientes ?? []).length;
   $('cl-count').textContent = lista.length === total
     ? `${total} clínicas. Tocá una clínica para abrir su ficha.`
@@ -936,6 +944,11 @@ const SEGMENTOS = {
     ['30', '8 a 30 días', (c) => diasSinUso(c) > 7 && diasSinUso(c) <= 30],
     ['90', '31 a 90 días', (c) => diasSinUso(c) > 30 && diasSinUso(c) <= 90],
     ['mas', 'Más de 90 días', (c) => diasSinUso(c) > 90]] },
+  disp: { titulo: 'Clínicas según dispositivo', cortes: [
+    ['ios', 'Solo iOS', (c) => c.platforms === 'ios'],
+    ['android', 'Solo Android', (c) => c.platforms === 'android'],
+    ['ambos', 'iOS y Android', (c) => c.platforms === 'android+ios'],
+    ['nd', 'Sin dato', (c) => !c.platforms]] },
   equipo: { titulo: 'Clínicas según tamaño del equipo', cortes: [
     ['1', '1 usuario', (c) => c.members <= 1],
     ['2+', 'Más de 1 usuario', (c) => c.members > 1]] },
@@ -1056,6 +1069,7 @@ function vistaGraficos(d) {
     ${graficoPlanes(cs)}
     ${graficoBarras('pac', cs, 'Pacientes cargados en la app por cada clínica. Las que no cargaron ninguno todavía no llegaron a probarla.')}
     ${graficoBarras('uso', cs, 'Días desde la última actividad: contenido cargado o un inicio de sesión de alguien del equipo.')}
+    ${graficoBarras('disp', cs, 'Dispositivos donde el equipo de cada clínica tiene sesión iniciada hoy. Sirve para decidir dónde poner pauta y qué tienda cuidar primero.')}
     ${graficoEquipo(cs)}
   </div>`;
 }
@@ -1130,14 +1144,15 @@ function cuentasSinClinica(d) {
   return `
   <h2 class="tbl-title">📝 Se registraron y no crearon ninguna clínica · ${us.length}</h2>
   <div class="tbl-scroll"><table>
-    <thead><tr><th>Nombre</th><th>Email</th><th>Se registró con</th><th>Alta</th><th>Último ingreso</th></tr></thead>
+    <thead><tr><th>Nombre</th><th>Email</th><th>Se registró con</th><th>Dispositivo</th><th>Alta</th><th>Último ingreso</th></tr></thead>
     <tbody>${us.map((u) => `<tr>
       <td>${esc(u.full_name ?? '—')}</td>
       <td>${u.email ? `<a href="mailto:${esc(u.email)}" style="color:#0066cc; text-decoration:none;">${esc(u.email)}</a>` : '—'}</td>
       <td>${PROV[u.provider] ?? esc(u.provider)}</td>
+      <td${u.platform ? '' : ' class="muted"'}>${dispTxt(u.platform)}</td>
       <td>${fecha(u.created_at)} · ${hace(u.created_at)}</td>
       <td>${u.last_sign_in_at ? hace(u.last_sign_in_at) : 'nunca'}</td></tr>`).join('')
-      || '<tr><td colspan="5" class="empty">Todas las cuentas registradas pertenecen a una clínica</td></tr>'}</tbody>
+      || '<tr><td colspan="6" class="empty">Todas las cuentas registradas pertenecen a una clínica</td></tr>'}</tbody>
   </table></div>
   <p class="tbl-note">Crearon la cuenta y abandonaron en el paso siguiente, el de crear o unirse a una clínica${total ? `: ${us.length} de ${total} cuentas registradas` : ''}. Los emails de quienes entraron con Apple pueden ser direcciones privadas de reenvío: les llega igual. No incluye cuentas con baja agendada.</p>`;
 }
@@ -1154,6 +1169,7 @@ function fichaCliente(d, id) {
   <p style="font-size:13px; color:#666; margin-bottom:6px;">Dueño: <strong>${esc(c.owner_name ?? 'sin nombre')}</strong> ·
     ${c.owner_email ? `<a href="mailto:${esc(c.owner_email)}" style="color:#0066cc;">${esc(c.owner_email)}</a>` : 'sin email'} ·
     Región: ${c.region ? `${regionTxt(c.region)} <span class="muted">(estimada por ${esc(REGION_SRC[c.region_src] ?? '')})</span>` : '<span class="muted">sin dato</span>'}
+    · Dispositivo: ${c.platforms ? dispTxt(c.platforms) : '<span class="muted">sin dato</span>'}
     ${c.referral_code ? ` · Entró con el código <strong>${esc(c.referral_code)}</strong>` : ''}</p>
   <div class="grid">
     <div class="card"><div class="card-title">Plan vigente</div>
